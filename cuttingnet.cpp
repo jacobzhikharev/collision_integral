@@ -76,7 +76,7 @@ void EqualityOfVectors(vector<vector<double> >g1, vector<vector<double> >g)
         }
     }
 }
-//Проверка закона сохранения энергии тоже работает верно
+//Проверка закона сохранения энергии
 void ZSE(vector<vector<double> > a, vector<vector<double> > E1)
 {
     double E1_2, E_2;
@@ -167,6 +167,18 @@ void ZSI(vector<vector<double> >a, vector<vector<double> >b)
         }
     }
 }
+int modpow(int x,int n, int m)
+{
+    if(n==0) return 1%m;
+    long long u=modpow(x,n/2,m);
+    u=(u*u)%m;
+    if(n%2==1) u=(u*x)%m;
+    return u;
+}
+double frac(double a)
+{
+    return a-(int)a;
+}
 //MAIN
 int main()
 {
@@ -195,27 +207,60 @@ int main()
     double gxy;//gxy^2=gx^2+gy^2
     double E1_2, E_2;//Проверка 
     vector<int> Elements_to_erase;
+    double R[8];//Вектор случайного сдвига сетки коробова
     vector<vector<double> > g1;//Относительные скорости после соударения
-    long int n = 400000000; //Число пар соударяющихся частиц1
+    long int n; //Число пар соударяющихся частиц1
     int Appr_dot;
     double N_to_fin;
+    int p=50021;//Размер сетки коробова
+    cout<<"In p: ";
+    cin>>p;
+    int K_b[8];
+    int b=11281;
+    cout<<"In b: ";
+    cin>>b;
     //Какая-то обработка
+    n=p;
     //Изменение размера массивов
     a=Nlrg(a,n,8);
     VelNet.resize(N); 
     Eta_cube=Nlrg(Eta_cube,8,3);
     E_cm.resize(3);
     //Получим массив вида n строк и 8 столбцов, первое число индексирует номер соударяющейся пары, а второй элемент точки
-    //Первые 6 - скорости, оставшиеся углы и прицельные параметры
+    //Первые 6 - скорости, оставшиеся углы и прицельные парамет
+    
     srand(static_cast<unsigned int>(clock()));//Что-то для случайного числа
-    for (int j = 0; j < a.size(); j++)
+    for(int i=0;i<8;i++)
     {
-        for (int i = 0; i < a[j].size(); i++)
-        {
-            a[j][i] = double(rand()) / (double(RAND_MAX) + 1.0);//Случайный элемент массива
-        }
+        R[i] = double(rand()) / (double(RAND_MAX) + 1.0);//Случайный элемент массива
+        cout<<R[i]<<endl;
     }
     //Тут имеем массив a[n][8] со случайными числами из(0,1)(или из [0,1))
+    //Заполняем массив сеткой Коробова размера p
+    //Находим коэффициенты
+    K_b[0]=1;
+    K_b[1]=b;
+    for(int i=2;i<8;i++)
+    {
+        K_b[i]=modpow(b,i,p);
+        cout<<K_b[i]<<endl;
+    }
+    //Заполняем массив
+    for(int i=0;i<a.size();i++)
+    {
+        for(int j=0;j<a[i].size();j++)
+        {
+            a[i][j]=frac(1.0*K_b[j]*(i+1)/p);
+        }
+    }
+    for(int i=0;i<a.size();i++)
+    {
+        for(int j=0;j<a[i].size();j++)
+        {
+            a[i][j]=a[i][j]+R[j];
+            if(a[i][j]>=1) a[i][j]-=1;
+        }
+    }
     //Теперь будем преобразововать массив
     for(int j=0;j<a.size();j++)
     {
@@ -355,7 +400,7 @@ int main()
     lam_s=Nlrg(lam_s,n,3);
     mu=Nlrg(mu,n,3);
     mu_s=Nlrg(mu_s,n,3);
-    cout<<n<<endl;
+    cout<<n<<" Before proection"<<endl;
     Elements_to_erase.clear();
     //Получили Новые массивы и набор точек в прве скоростей и нужного размера
 //Далее идет проекционный метод
@@ -655,6 +700,13 @@ int main()
             {
                 cout<<"MISTAKE  lam-mu ";//<<lam_s[][]+mu_s[][]<<" "<<lam[];
             }
+        }
+    }
+    for(int i=0;i<a.size();i++)
+    {
+        if(ModVector(lam_s[i],1,3)>=E_cut||ModVector(lam[i],1,3)>=E_cut||ModVector(mu[i],1,3)>=E_cut||ModVector(mu_s[i],1,3)>=E_cut)
+        {
+            cout<<"Nu ty i Mudak ";
         }
     }
     //printMatrix(E_near);//Вывод массива
