@@ -4,6 +4,7 @@
 #include <cmath>
 #include <vector>
 #include <iomanip>
+#include <fstream>   
 using namespace std;
 #define _USE_MATH_DEFINES
 //Метод для быстрого удаления элемента из матрицы
@@ -61,7 +62,7 @@ void printMatrix(vector<vector<double> > a)
         cout<<endl;
     }
 }
-//Проверка равенства векторов с какой-то точностью. ТОже работает верно
+//Проверка равенства векторов с какой-то точностью.
 void EqualityOfVectors(vector<vector<double> >g1, vector<vector<double> >g)
 {
     double ag1;
@@ -179,6 +180,90 @@ double frac(double a)
 {
     return a-(int)a;
 }
+int I(double a)
+{
+    if((a+4.56)*(a+4.56)<1.0e-10)
+    {
+        return 0;
+    }
+    if((a+4.08)*(a+4.08)<1.0e-10)
+    {
+        return 1;
+    }
+    if((a+3.6)*(a+3.6)<1.0e-10)
+    {
+        return 2;
+    }
+    if((a+3.12)*(a+3.12)<1.0e-10)
+    {
+        return 3;
+    }
+    if((a+2.64)*(a+2.64)<1.0e-10)
+    {
+        return 4;
+    }
+    if((a+2.16)*(a+2.16)<1.0e-10)
+    {
+        return 5;
+    }
+    if((a+1.68)*(a+1.68)<1.0e-10)
+    {
+        return 6;
+    }
+    if((a+1.2)*(a+1.2)<1.0e-10)
+    {
+        return 7;
+    }
+    if((a+0.72)*(a+0.72)<1.0e-10)
+    {
+        return 8;
+    }
+    if((a+0.24)*(a+0.24)<1.0e-10)
+    {
+        return 9;
+    }
+    if((a-0.24)*(a-0.24)<1.0e-10)
+    {
+        return 10;
+    }
+    if((a-0.72)*(a-0.72)<1.0e-10)
+    {
+        return 11;
+    }
+    if((a-1.2)*(a-1.2)<1.0e-10)
+    {
+        return 12;
+    }
+    if((a-1.68)*(a-1.68)<1.0e-10)
+    {
+        return 13;
+    }
+    if((a-2.16)*(a-2.16)<1.0e-10)
+    {
+        return 14;
+    }
+    if((a-2.64)*(a-2.64)<1.0e-10)
+    {
+        return 15;
+    }
+    if((a-3.12)*(a-3.12)<1.0e-10)
+    {
+        return 16;
+    }
+    if((a-3.6)*(a-3.6)<1.0e-10)
+    {
+        return 17;
+    }
+    if((a-4.08)*(a-4.08)<1.0e-10)
+    {
+        return 18;
+    }
+    if((a-4.56)*(a-4.56)<1.0e-10)
+    {
+        return 19;
+    }
+    return -1;
+}
 //MAIN
 int main()
 {
@@ -203,55 +288,101 @@ int main()
     vector<vector<double> >mu;
     vector<vector<double> >mu_s;
     double E_near_energy=0.0;
+    double C;//Константа при интегрировании
     double ag;//Модуль вектора g
     double gxy;//gxy^2=gx^2+gy^2
     double E1_2, E_2;//Проверка 
+    double E_0v, E_1v,E_2v;//Для вычисления r
     vector<int> Elements_to_erase;
     double R[8];//Вектор случайного сдвига сетки коробова
     vector<vector<double> > g1;//Относительные скорости после соударения
     long int n; //Число пар соударяющихся частиц1
     int Appr_dot;
     double N_to_fin;
-    int p=50021;//Размер сетки коробова
-    cout<<"In p: ";
+    int p;
+    cout<<"Enter p-> ";
     cin>>p;
     int K_b[8];
-    int b=11281;
-    cout<<"In b: ";
+    int b;
+    cout<<"Enter b-> ";
     cin>>b;
-    //Какая-то обработка
-    n=p;
-    //Изменение размера массивов
-    a=Nlrg(a,n,8);
+    int t, t_max;
+    cout<<"Enter max t-> ";
+    cin>>t_max;
+    double tau;//Шаг интегрирования
+    cout<<"Enter C-> ";
+    cin>>C;
+    cout<<"Enter tau-> ";
+    cin>>tau;
+    double rel[3];
+    double Omega;//Параметр для интегрирования
+    double f[20][20][20][t_max];//Функции распределения
+    //Заполняем н у функции распределения
     VelNet.resize(N); 
-    Eta_cube=Nlrg(Eta_cube,8,3);
-    E_cm.resize(3);
-    //Получим массив вида n строк и 8 столбцов, первое число индексирует номер соударяющейся пары, а второй элемент точки
-    //Первые 6 - скорости, оставшиеся углы и прицельные парамет
-    
-    srand(static_cast<unsigned int>(clock()));//Что-то для случайного числа
-    for(int i=0;i<8;i++)
+    for(int i=0;i<20;i++)
     {
-        R[i] = double(rand()) / (double(RAND_MAX) + 1.0);//Случайный элемент массива
-        cout<<R[i]<<endl;
+        VelNet[i]=-E_cut+(i+0.5)*2*E_cut/N;
     }
-    //Тут имеем массив a[n][8] со случайными числами из(0,1)(или из [0,1))
-    //Заполняем массив сеткой Коробова размера p
-    //Находим коэффициенты
+    for(int i=0;i<20;i++)
+    {
+        for(int j=0;j<20;j++)
+        {
+            for(int k=0;k<20;k++)
+            {
+                if(sqrt((VelNet[i])*(VelNet[i])+VelNet[j]*VelNet[j]+VelNet[k]*VelNet[k])<E_cut)
+                {
+                f[i][j][k][0]=exp(-0.5*((VelNet[i])*(VelNet[i])+VelNet[j]*VelNet[j]+VelNet[k]*VelNet[k]));
+                }
+                else
+                {
+                f[i][j][k][0]=0.0;    
+                }
+                
+            }
+        }
+    }
+    vector<double> r;
+//Печать в файл
+    ofstream out;
+    out.open("resultfv");
+    for(int i=0;i<20;i++)
+    {
+        for(int j=0;j<20;j++)
+        {
+            for(int k=0;k<20;k++)
+            {
+                out<<VelNet[i]<<" "<<f[i][j][k][0]<<endl;
+            }
+        }
+    }
+    out.close();
     K_b[0]=1;
     K_b[1]=b;
     for(int i=2;i<8;i++)
     {
         K_b[i]=modpow(b,i,p);
-        cout<<K_b[i]<<endl;
     }
-    //Заполняем массив
+//Цикл по времени
+for(t=0;t<t_max;t++)
+{
+    n=p;
+    a=Nlrg(a,n,8);
+    Eta_cube=Nlrg(Eta_cube,8,3);
+    E_cm.resize(3);
+    //Получим массив вида n строк и 8 столбцов, первое число индексирует номер соударяющейся пары, а второй элемент точки
+    //Заполняем массив сеткой Коробова размера p
     for(int i=0;i<a.size();i++)
     {
         for(int j=0;j<a[i].size();j++)
         {
             a[i][j]=frac(1.0*K_b[j]*(i+1)/p);
         }
+    }
+    //Сдвигаем на случайный вектор каждый шаг по времени
+    srand(static_cast<unsigned int>(clock()));
+    for(int i=0;i<8;i++)
+    {
+        R[i] = double(rand()) / (double(RAND_MAX) + 1.0);
     }
     for(int i=0;i<a.size();i++)
     {
@@ -270,12 +401,6 @@ int main()
         }
         a[j][7]=a[j][7]*2.0*M_PI;
     }
-    //Приближение к дискретной сетке скоростей
-    //Создаем саму сетку скоростей
-    for(int i=0;i<20;i++)
-    {
-        VelNet[i]=-E_cut+(i+0.5)*2*E_cut/N;
-    }
     //Теперь приближаем к ней 
     for(int i=0;i<a.size();i++)
     {
@@ -284,6 +409,7 @@ int main()
             a[i][j]=findClosest(VelNet,a[i][j]);
         }
     }
+    Elements_to_erase.clear();
     //Обрезаем в сферу тоже с большой вероятностью верно
     for(int i=0;i<a.size();i++)
     {
@@ -312,7 +438,6 @@ int main()
             Elements_to_erase.push_back(i);
         }
     }
-    cout<<endl<<Elements_to_erase.size()<<" 0 rel."<<endl;
     a.erase(remove_at(a.begin(), a.end(), Elements_to_erase.begin(), Elements_to_erase.end()), a.end());
     g.erase(remove_at(g.begin(), g.end(), Elements_to_erase.begin(), Elements_to_erase.end()), g.end());
     cout<<a.size()<<endl;
@@ -400,7 +525,6 @@ int main()
     lam_s=Nlrg(lam_s,n,3);
     mu=Nlrg(mu,n,3);
     mu_s=Nlrg(mu_s,n,3);
-    cout<<n<<" Before proection"<<endl;
     Elements_to_erase.clear();
     //Получили Новые массивы и набор точек в прве скоростей и нужного размера
 //Далее идет проекционный метод
@@ -580,6 +704,7 @@ int main()
                     mu_s[i][k]=0;
                 } 
             }
+
             
         }
 //Третий случай
@@ -665,6 +790,63 @@ int main()
     lam_s.erase(remove_at(lam_s.begin(), lam_s.end(), Elements_to_erase.begin(), Elements_to_erase.end()), lam_s.end());
     mu.erase(remove_at(mu.begin(), mu.end(), Elements_to_erase.begin(), Elements_to_erase.end()), mu.end());
     mu_s.erase(remove_at(mu_s.begin(), mu_s.end(), Elements_to_erase.begin(), Elements_to_erase.end()), mu_s.end());
+    r.resize(a.size());
+    for(int i=0;i<a.size();i++)
+    {
+        E_0v=a[i][0]*a[i][0]+a[i][1]*a[i][1]+a[i][2]*a[i][2]+
+            a[i][3]*a[i][3]+a[i][4]*a[i][4]+a[i][5]*a[i][5];
+        E_1v=lam[i][0]*lam[i][0]+lam[i][1]*lam[i][1]+lam[i][2]*lam[i][2]+
+            mu[i][0]*mu[i][0]+mu[i][1]*mu[i][1]+mu[i][2]*mu[i][2];
+        E_2v=lam_s[i][0]*lam_s[i][0]+lam_s[i][1]*lam_s[i][1]+lam_s[i][2]*lam_s[i][2]+
+            mu_s[i][0]*mu_s[i][0]+mu_s[i][1]*mu_s[i][1]+mu_s[i][2]*mu_s[i][2];
+        if((E_2v-E_1v)*(E_2v-E_1v)<1.0e-8||(E_0v-E_1v)*(E_0v-E_1v)<1.0e-8)
+        {
+            r[i]=1.0;
+        }
+        else
+        {
+            r[i]=(E_0v-E_1v)/(E_2v-E_1v);
+        }
+    }
+    
+//Теперь вычисляем интеграл
+    for(int i=0;i<a.size();i++)
+    {
+        for(int j=0;j<3;j++)
+        {
+            rel[j]=a[i][j]-a[i][j+3];
+        }
+        if(f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])][t]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])][t]*
+        f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])][t]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])][t]
+        >1.0e-10)
+        Omega=(pow(f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])][t]*f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])][t]/(f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])][t]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])][t]),r[i])*f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])][t]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])][t]-f[I(a[i][0])][I(a[i][1])][I(a[i][2])][t]*f[I(a[i][0])][I(a[i][1])][I(a[i][2])][t])*
+        sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2]);
+        else Omega=0;
+        if(f[I(a[i][0])][I(a[i][1])][I(a[i][2])][t]+C*Omega<0||
+        f[I(a[i][3])][I(a[i][4])][I(a[i][5])][t]+C*Omega<0||
+        f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])][t]-(1-r[i])*C*Omega<0||
+        f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])][t]-(1-r[i])*C*Omega<0||
+        f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])][t]-r[i]*C*Omega<0||
+        f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])][t]-r[i]*C*Omega<0)
+        {
+            f[I(a[i][0])][I(a[i][1])][I(a[i][2])][t+1]=f[I(a[i][0])][I(a[i][1])][I(a[i][2])][t];
+            f[I(a[i][3])][I(a[i][4])][I(a[i][5])][t+1]=f[I(a[i][3])][I(a[i][4])][I(a[i][5])][t];
+            f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])][t+1]=f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])][t];
+            f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])][t+1]=f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])][t];
+            f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])][t+1]=f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])][t];
+            f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])][t+1]=f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])][t];
+        }
+        else
+        {
+            f[I(a[i][0])][I(a[i][1])][I(a[i][2])][t+1]=f[I(a[i][0])][I(a[i][1])][I(a[i][2])][t]+C*Omega;
+            f[I(a[i][3])][I(a[i][4])][I(a[i][5])][t+1]=f[I(a[i][3])][I(a[i][4])][I(a[i][5])][t]+C*Omega;
+            f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])][t+1]=f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])][t]-(1-r[i])*C*Omega;
+            f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])][t+1]=f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])][t]-(1-r[i])*C*Omega;
+            f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])][t+1]=f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])][t]-r[i]*C*Omega;
+            f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])][t+1]=f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])][t]-r[i]*C*Omega;
+        }
+        
+    }
 
 //Проверки
     ZSE(a,E1);
@@ -672,51 +854,17 @@ int main()
     ZSI(E1,a);
     ZSI(E1,E_near);
     ZSI(a,E_near);
-    for(int i=0;i<a.size();i++)
+}        
+    out.open("resultfvfin");
+    for(int i=0;i<20;i++)
     {
-        for(int j=0;j<3;j++)
+        for(int j=0;j<20;j++)
         {
-            if((lam[i][j]+mu[i][j]-a[i][j]-a[i][j+3])*(lam[i][j]+mu[i][j]-a[i][j]-a[i][j+3])>1.0e-8)
+            for(int k=0;k<20;k++)
             {
-                cout<<"MISTAKE  ";
+                out<<VelNet[i]<<" "<<f[i][j][k][t_max-1]<<endl;
             }
         }
     }
-    for(int i=0;i<a.size();i++)
-    {
-        for(int j=0;j<3;j++)
-        {
-            if((lam_s[i][j]+mu_s[i][j]-a[i][j]-a[i][j+3])*(lam_s[i][j]+mu_s[i][j]-a[i][j]-a[i][j+3])>1.0e-8)
-            {
-                cout<<"MISTAKE s-a ";
-            }
-        }
-    }
-    for(int i=0;i<a.size();i++)
-    {
-        for(int j=0;j<3;j++)
-        {
-            if((lam_s[i][j]+mu_s[i][j]-lam[i][j]-mu[i][j])*(lam_s[i][j]+mu_s[i][j]-lam[i][j]-mu[i][j])>1.0e-8)
-            {
-                cout<<"MISTAKE  lam-mu ";//<<lam_s[][]+mu_s[][]<<" "<<lam[];
-            }
-        }
-    }
-    for(int i=0;i<a.size();i++)
-    {
-        if(ModVector(lam_s[i],1,3)>=E_cut||ModVector(lam[i],1,3)>=E_cut||ModVector(mu[i],1,3)>=E_cut||ModVector(mu_s[i],1,3)>=E_cut)
-        {
-            cout<<"Nu ty i Mudak ";
-        }
-    }
-    //printMatrix(E_near);//Вывод массива
-    cout <<endl
-        << "ty  "
-        << M_PI
-        <<"door"
-        <<endl
-        <<a.size()
-        <<endl;
-    
-        
+    out.close();
 }
