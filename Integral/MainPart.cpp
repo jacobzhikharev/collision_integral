@@ -122,6 +122,7 @@ int main()
     double rel[3];
     double Delta;//Параметр для интегрирования
     double f[N_x][N_y][N_z];//Функции распределения
+    double f1[N_x][N_y][N_z];
     //Заполняем н у функции распределения
     VelNet.resize(N); 
     vector<double> T_long;
@@ -161,11 +162,12 @@ int main()
                 f[i][j][k]=0.0;    
                 nc+=f[i][j][k]*0.48*0.48*0.48*288*288*288;
                 }
-                T_Zero+=(f[i][j][k])*((VelNet[i]*288)*(VelNet[i]*288)+VelNet[j]*288*VelNet[j]*288+VelNet[k]*288*VelNet[k]*288);                
+                T_Zero+=(f[i][j][k])*((VelNet[i]*288)*(VelNet[i]*288)+VelNet[j]*288*VelNet[j]*288+VelNet[k]*288*VelNet[k]*288)*0.48*0.48*0.48*288*288*288;                
             }
         }
     }
-    //cout<<"T[0]="<<T_Zero*0.000002093*300/nc<<endl;
+    T_Zero=T_Zero/nc;
+    cout<<"T[0]="<<T_Zero*0.000002093*300<<endl;
     vector<double> r;
 //Печать в файл
     ofstream out;
@@ -652,6 +654,16 @@ for(t=0;t<t_max;t++)
     }
     
 //Теперь вычисляем интеграл
+for(int i=0;i<N_x;i++)
+    {
+        for(int j=0;j<N_y;j++)
+        {
+            for(int k=0;k<N_z;k++)
+            {
+                f1[i][j][k]=f[i][j][k];
+            }
+        }
+    }
     for(int i=0;i<a.size();i++)
     {
         for(int j=0;j<3;j++)
@@ -734,8 +746,20 @@ for(t=0;t<t_max;t++)
             }
         }
     }    
+    int h=0;
     T[t]=T[t]/nc;
     cout<<"n after"<<nc<<endl;
+    for(int i=0;i<N_x;i++)
+    {
+        for(int j=0;j<N_y;j++)
+        {
+            for(int k=0;k<N_z;k++)
+            {
+               if((f1[i][j][k]-f[i][j][k])*(f1[i][j][k]-f[i][j][k])>1.0e-30) 
+               cout<<"Here "<<t<<endl;
+            }
+        }
+    }
 }    
 nc=0.0;
     for(int i=0;i<N_x;i++)
@@ -770,7 +794,7 @@ nc=0.0;
     out.open("Time");
     for(int i=0;i<t_max;i++)
     {
-        out<<i<<" "<<T[i]*0.000002093*300*0.48*0.48*0.48*288*288*288<<endl;
+        out<<i<<" "<<(T[i]*0.000002093*300*0.48*0.48*0.48*288*288*288/(0.000002093*300*T_Zero)-1)*100<<endl;
     }
     out.close();
     out.open("Hfunc");
