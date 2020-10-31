@@ -9,7 +9,10 @@
 #include "workwVectors.h"
 using namespace std;
 #define _USE_MATH_DEFINES
-const int N=20;
+const int N=2;
+const double Bltzmn=1.380649*1.0e-23;
+const double mass=6.65*1.0e-27;
+const double Temp=200.0;
 const double E_cut=4.8;//Параметр для обрезания сферы
 //Метод для быстрого удаления элемента из матрицы
 template <class ForwardIt, class SortUniqIndsFwdIt>
@@ -146,28 +149,28 @@ int main()
             {
                 if(sqrt((VelNet[i])*(VelNet[i])+VelNet[j]*VelNet[j]+VelNet[k]*VelNet[k])<E_cut)
                 {
-                f[i][j][k]=1.413*1.0e-9/3.77714e-7/2.64181e+6*
+                f[i][j][k]=0.5*pow(mass/(M_PI*Bltzmn*Temp),1.5)*
                 (
-                    exp(-0.000006279897*
-                    ((VelNet[i]*288-488)*(VelNet[i]*288-488)+VelNet[j]*288*VelNet[j]*288+VelNet[k]*288*VelNet[k]*288)
+                    exp(-mass/(Bltzmn*Temp)*
+                    ((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)-sqrt((3*Bltzmn*Temp)/(2*mass)))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)-sqrt((3*Bltzmn*Temp)/(2*mass)))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))
                     )+
-                    exp(-0.000006279897*
-                    ((VelNet[i]*288+488)*(VelNet[i]*288+488)+VelNet[j]*288*VelNet[j]*288+VelNet[k]*288*VelNet[k]*288)
+                    exp(-mass/(Bltzmn*Temp)*
+                    ((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+sqrt((3*Bltzmn*Temp)/(2*mass)))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+sqrt((3*Bltzmn*Temp)/(2*mass)))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))
                     )
                 );
-                nc+=f[i][j][k]*0.48*0.48*0.48*288*288*288;
+                nc+=f[i][j][k]*0.48*0.48*0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
                 }
                 else
                 {
                 f[i][j][k]=0.0;    
-                nc+=f[i][j][k]*0.48*0.48*0.48*288*288*288;
+                nc+=f[i][j][k]*0.48*0.48*0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
                 }
-                T_Zero+=(f[i][j][k])*((VelNet[i]*288)*(VelNet[i]*288)+VelNet[j]*288*VelNet[j]*288+VelNet[k]*288*VelNet[k]*288)*0.48*0.48*0.48*288*288*288;                
+                T_Zero+=(f[i][j][k])*((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))*0.48*0.48*0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);                
             }
         }
     }
     T_Zero=T_Zero/nc;
-    cout<<"T[0]="<<T_Zero*0.000002093*300<<endl;
+    cout<<"T[0]="<<T_Zero*mass/(3*Bltzmn)<<endl;
     vector<double> r;
 //Печать в файл
     ofstream out;
@@ -180,7 +183,7 @@ int main()
             {
                 for(int k=0;k<N_z;k++)
                 {
-                    out<<VelNet[i]*288<<" "<<f[i][j][k]<<endl;
+                    out<<VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)<<" "<<f[i][j][k]<<endl;
                 }
             }
         }
@@ -673,13 +676,12 @@ for(int i=0;i<N_x;i++)
         //cout<<endl<<f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]<<endl;
         if((f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]>1.0e-15)&&(f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]
         >1.0e-15)){
-        //cout<<endl<<"PeepeePooPoo"<<endl;
         Delta=(pow(f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]*f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]/(f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]),r[i])*f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-
         f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])])*
-        sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*288.0;
+        sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
         }
         else {Delta=-f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])]*
-        sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*288.0;}
+        sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);}
         //Delta=(pow(f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]*f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])],r[i])*pow(f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])],r[i])-f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])])*sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2]);
         if(f[I(a[i][0])][I(a[i][1])][I(a[i][2])]-C*Delta<1.0e-15||
         f[I(a[i][3])][I(a[i][4])][I(a[i][5])]-C*Delta<1.0e-15||
@@ -729,9 +731,9 @@ for(int i=0;i<N_x;i++)
                 {
                 H[t]+=f[i][j][k]*0.5*log(konst_to_ln);
                 }
-                T[t]+=(f[i][j][k])*((VelNet[i]*288)*(VelNet[i]*288)+VelNet[j]*288*VelNet[j]*288+VelNet[k]*288*VelNet[k]*288);
+                T[t]+=(f[i][j][k])*((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0));
 
-                T_long[t]+=f[i][j][k]*VelNet[j]*VelNet[j]*288*288;
+                T_long[t]+=f[i][j][k]*VelNet[j]*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
             }
         }
     }
@@ -742,24 +744,13 @@ for(int i=0;i<N_x;i++)
         {
             for(int k=0;k<N_z;k++)
             {
-                nc+=f[i][j][k]*0.48*0.48*0.48*288*288*288;
+                nc+=f[i][j][k]*0.48*0.48*0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
             }
         }
     }    
     int h=0;
     T[t]=T[t]/nc;
     cout<<"n after"<<nc<<endl;
-    for(int i=0;i<N_x;i++)
-    {
-        for(int j=0;j<N_y;j++)
-        {
-            for(int k=0;k<N_z;k++)
-            {
-               if((f1[i][j][k]-f[i][j][k])*(f1[i][j][k]-f[i][j][k])>1.0e-30) 
-               cout<<"Here "<<t<<endl;
-            }
-        }
-    }
 }    
 nc=0.0;
     for(int i=0;i<N_x;i++)
@@ -768,7 +759,7 @@ nc=0.0;
         {
             for(int k=0;k<N_z;k++)
             {
-                nc+=f[i][j][k]*0.48*0.48*0.48*288*288*288;
+                nc+=f[i][j][k]*0.48*0.48*0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
             }
         }
     }    
@@ -780,7 +771,7 @@ nc=0.0;
         {
             for(int k=0;k<N_z;k++)
             {
-                out<<VelNet[i]*288<<" "<<f[i][j][k]<<endl;
+                out<<VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)<<" "<<f[i][j][k]<<endl;
             }
         }
     }
@@ -788,13 +779,13 @@ nc=0.0;
     out.open("Timelong");
     for(int i=0;i<t_max;i++)
     {
-        out<<i<<" "<<T_long[i]*0.000002093*300*0.48*0.48*0.48*288*288*288<<endl;
+        out<<i<<" "<<T_long[i]*0.000002093*300*0.48*0.48*0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)<<endl;
     }
     out.close();
     out.open("Time");
     for(int i=0;i<t_max;i++)
     {
-        out<<i<<" "<<(T[i]*0.000002093*300*0.48*0.48*0.48*288*288*288/(0.000002093*300*T_Zero)-1)*100<<endl;
+        out<<i<<" "<<(T[i]*mass/(3*Bltzmn)*0.48*0.48*0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)/(mass/(3*Bltzmn)*T_Zero)-1)*100<<endl;
     }
     out.close();
     out.open("Hfunc");
