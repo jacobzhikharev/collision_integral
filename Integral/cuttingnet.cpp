@@ -9,6 +9,8 @@
 #include "workwVectors.h"
 using namespace std;
 #define _USE_MATH_DEFINES
+const int N=20;
+const double E_cut=4.8;//Параметр для обрезания сферы
 //Метод для быстрого удаления элемента из матрицы
 template <class ForwardIt, class SortUniqIndsFwdIt>
 inline ForwardIt remove_at(
@@ -55,33 +57,16 @@ double frac(double a)
 {
     return a-(int)a;
 }
-int I(vector<double> VelNet,double a)
+int I(double a)
 {
-    //vector<double> VelNet;
-    //double E_cut=4.8;
-    //int N=20;
-    //VelNet.resize(N);
-    //for(int i=0;i<VelNet.size();i++)
-    //{
-    //    VelNet[i]=-E_cut+(i+0.5)*2*E_cut/N;
-    //}
-    for(int i=0;i<VelNet.size();i++)
-    {
-        if((a-VelNet[i])*(a-VelNet[i])<1.0e-10)
-        {
-            return i;
-        } 
-       
-    }
-    return -1;
+    return (E_cut+a)/(2*E_cut/N);
 }
 //MAIN
 int main()
 {
     //Переменнные
     int s = 0;//Для проверки каких-то параметров
-    int N_x=20,N_y=20,N_z=20,N=20;
-    double E_cut=4.8;//Параметр для обрезания сферы
+    int N_x=N,N_y=N,N_z=N;
     double delta_E=E_cut*2.0/N;
     vector<vector<double> > a;//Основной массив
     vector<vector<double> > g;//Относительные скорости
@@ -124,7 +109,7 @@ int main()
     int t, t_max=100;
     cout<<"Enter max t-> ";
     cin>>t_max;
-    double tau=0.08;//Шаг интегрирования
+    double tau=55000;//Шаг интегрирования
     /*cout<<"Enter C-> ";
     cin>>C;m,m,.
     */
@@ -146,6 +131,7 @@ int main()
     u.resize(t_max);
     H.resize(t_max);
     T.resize(t_max);
+    double T_Zero=0.0;
     T_long.resize(t_max);
     for(int i=0;i<VelNet.size();i++)
     {
@@ -159,7 +145,7 @@ int main()
             {
                 if(sqrt((VelNet[i])*(VelNet[i])+VelNet[j]*VelNet[j]+VelNet[k]*VelNet[k])<E_cut)
                 {
-                f[i][j][k]=1.413*1.0e-9/3.77714e-7*
+                f[i][j][k]=1.413*1.0e-9/3.77714e-7/2.64181e+6*
                 (
                     exp(-0.000006279897*
                     ((VelNet[i]*288-488)*(VelNet[i]*288-488)+VelNet[j]*288*VelNet[j]*288+VelNet[k]*288*VelNet[k]*288)
@@ -168,17 +154,18 @@ int main()
                     ((VelNet[i]*288+488)*(VelNet[i]*288+488)+VelNet[j]*288*VelNet[j]*288+VelNet[k]*288*VelNet[k]*288)
                     )
                 );
-                nc+=f[i][j][k];
+                nc+=f[i][j][k]*0.48*0.48*0.48*288*288*288;
                 }
                 else
                 {
                 f[i][j][k]=0.0;    
-                nc+=f[i][j][k];
+                nc+=f[i][j][k]*0.48*0.48*0.48*288*288*288;
                 }
-                
+                T_Zero+=(f[i][j][k])*((VelNet[i]*288)*(VelNet[i]*288)+VelNet[j]*288*VelNet[j]*288+VelNet[k]*288*VelNet[k]*288);                
             }
         }
     }
+    //cout<<"T[0]="<<T_Zero*0.000002093*300/nc<<endl;
     vector<double> r;
 //Печать в файл
     ofstream out;
@@ -671,40 +658,40 @@ for(t=0;t<t_max;t++)
         {
             rel[j]=a[i][j]-a[i][j+3];
         }
-        //cout<<endl<<f[I(VelNet,lam[i][0])][I(VelNet,lam[i][1])][I(VelNet,lam[i][2])]*f[I(VelNet,mu[i][0])][I(VelNet,mu[i][1])][I(VelNet,mu[i][2])]<<endl;
-        if((f[I(VelNet,lam[i][0])][I(VelNet,lam[i][1])][I(VelNet,lam[i][2])]>1.0e-15)&&(f[I(VelNet,mu[i][0])][I(VelNet,mu[i][1])][I(VelNet,mu[i][2])]
+        //cout<<endl<<f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]<<endl;
+        if((f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]>1.0e-15)&&(f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]
         >1.0e-15)){
         //cout<<endl<<"PeepeePooPoo"<<endl;
-        Delta=(pow(f[I(VelNet,lam_s[i][0])][I(VelNet,lam_s[i][1])][I(VelNet,lam_s[i][2])]*f[I(VelNet,mu_s[i][0])][I(VelNet,mu_s[i][1])][I(VelNet,mu_s[i][2])]/(f[I(VelNet,lam[i][0])][I(VelNet,lam[i][1])][I(VelNet,lam[i][2])]*f[I(VelNet,mu[i][0])][I(VelNet,mu[i][1])][I(VelNet,mu[i][2])]),r[i])*f[I(VelNet,lam[i][0])][I(VelNet,lam[i][1])][I(VelNet,lam[i][2])]*f[I(VelNet,mu[i][0])][I(VelNet,mu[i][1])][I(VelNet,mu[i][2])]-
-        f[I(VelNet,a[i][0])][I(VelNet,a[i][1])][I(VelNet,a[i][2])]*f[I(VelNet,a[i][3])][I(VelNet,a[i][4])][I(VelNet,a[i][5])])*
+        Delta=(pow(f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]*f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]/(f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]),r[i])*f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-
+        f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])])*
         sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*288.0;
         }
-        else {Delta=-f[I(VelNet,a[i][0])][I(VelNet,a[i][1])][I(VelNet,a[i][2])]*f[I(VelNet,a[i][3])][I(VelNet,a[i][4])][I(VelNet,a[i][5])]*
+        else {Delta=-f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])]*
         sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*288.0;}
-        //Delta=(pow(f[I(VelNet,lam_s[i][0])][I(VelNet,lam_s[i][1])][I(VelNet,lam_s[i][2])]*f[I(VelNet,mu_s[i][0])][I(VelNet,mu_s[i][1])][I(VelNet,mu_s[i][2])],r[i])*pow(f[I(VelNet,lam[i][0])][I(VelNet,lam[i][1])][I(VelNet,lam[i][2])]*f[I(VelNet,mu[i][0])][I(VelNet,mu[i][1])][I(VelNet,mu[i][2])],r[i])-f[I(VelNet,a[i][0])][I(VelNet,a[i][1])][I(VelNet,a[i][2])]*f[I(VelNet,a[i][3])][I(VelNet,a[i][4])][I(VelNet,a[i][5])])*sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2]);
-        if(f[I(VelNet,a[i][0])][I(VelNet,a[i][1])][I(VelNet,a[i][2])]-C*Delta<1.0e-15||
-        f[I(VelNet,a[i][3])][I(VelNet,a[i][4])][I(VelNet,a[i][5])]-C*Delta<1.0e-15||
-        f[I(VelNet,lam[i][0])][I(VelNet,lam[i][1])][I(VelNet,lam[i][2])]+(1-r[i])*C*Delta<1.0e-15||
-        f[I(VelNet,mu[i][0])][I(VelNet,mu[i][1])][I(VelNet,mu[i][2])]+(1-r[i])*C*Delta<1.0e-15||
-        f[I(VelNet,lam_s[i][0])][I(VelNet,lam_s[i][1])][I(VelNet,lam_s[i][2])]+r[i]*C*Delta<1.0e-15||
-        f[I(VelNet,mu_s[i][0])][I(VelNet,mu_s[i][1])][I(VelNet,mu_s[i][2])]+r[i]*C*Delta<1.0e-15)
+        //Delta=(pow(f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]*f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])],r[i])*pow(f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])],r[i])-f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])])*sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2]);
+        if(f[I(a[i][0])][I(a[i][1])][I(a[i][2])]-C*Delta<1.0e-15||
+        f[I(a[i][3])][I(a[i][4])][I(a[i][5])]-C*Delta<1.0e-15||
+        f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]+(1-r[i])*C*Delta<1.0e-15||
+        f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]+(1-r[i])*C*Delta<1.0e-15||
+        f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]+r[i]*C*Delta<1.0e-15||
+        f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]+r[i]*C*Delta<1.0e-15)
         {/*
-            f[I(VelNet,a[i][0])][I(VelNet,a[i][1])][I(VelNet,a[i][2])]=f[I(VelNet,a[i][0])][I(VelNet,a[i][1])][I(VelNet,a[i][2])];
-            f[I(VelNet,a[i][3])][I(VelNet,a[i][4])][I(VelNet,a[i][5])]=f[I(VelNet,a[i][3])][I(VelNet,a[i][4])][I(VelNet,a[i][5])];
-            f[I(VelNet,lam[i][0])][I(VelNet,lam[i][1])][I(VelNet,lam[i][2])]=f[I(VelNet,lam[i][0])][I(VelNet,lam[i][1])][I(VelNet,lam[i][2])];
-            f[I(VelNet,mu[i][0])][I(VelNet,mu[i][1])][I(VelNet,mu[i][2])]=f[I(VelNet,mu[i][0])][I(VelNet,mu[i][1])][I(VelNet,mu[i][2])];
-            f[I(VelNet,lam_s[i][0])][I(VelNet,lam_s[i][1])][I(VelNet,lam_s[i][2])]=f[I(VelNet,lam_s[i][0])][I(VelNet,lam_s[i][1])][I(VelNet,lam_s[i][2])];
-            f[I(VelNet,mu_s[i][0])][I(VelNet,mu_s[i][1])][I(VelNet,mu_s[i][2])]=f[I(VelNet,mu_s[i][0])][I(VelNet,mu_s[i][1])][I(VelNet,mu_s[i][2])];
+            f[I(a[i][0])][I(a[i][1])][I(a[i][2])]=f[I(a[i][0])][I(a[i][1])][I(a[i][2])];
+            f[I(a[i][3])][I(a[i][4])][I(a[i][5])]=f[I(a[i][3])][I(a[i][4])][I(a[i][5])];
+            f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]=f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])];
+            f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]=f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])];
+            f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]=f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])];
+            f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]=f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])];
         */
         }
         else
         {
-            f[I(VelNet,a[i][0])][I(VelNet,a[i][1])][I(VelNet,a[i][2])]=f[I(VelNet,a[i][0])][I(VelNet,a[i][1])][I(VelNet,a[i][2])]-C*Delta;
-            f[I(VelNet,a[i][3])][I(VelNet,a[i][4])][I(VelNet,a[i][5])]=f[I(VelNet,a[i][3])][I(VelNet,a[i][4])][I(VelNet,a[i][5])]-C*Delta;
-            f[I(VelNet,lam[i][0])][I(VelNet,lam[i][1])][I(VelNet,lam[i][2])]=f[I(VelNet,lam[i][0])][I(VelNet,lam[i][1])][I(VelNet,lam[i][2])]+(1-r[i])*C*Delta;
-            f[I(VelNet,mu[i][0])][I(VelNet,mu[i][1])][I(VelNet,mu[i][2])]=f[I(VelNet,mu[i][0])][I(VelNet,mu[i][1])][I(VelNet,mu[i][2])]+(1-r[i])*C*Delta;
-            f[I(VelNet,lam_s[i][0])][I(VelNet,lam_s[i][1])][I(VelNet,lam_s[i][2])]=f[I(VelNet,lam_s[i][0])][I(VelNet,lam_s[i][1])][I(VelNet,lam_s[i][2])]+r[i]*C*Delta;
-            f[I(VelNet,mu_s[i][0])][I(VelNet,mu_s[i][1])][I(VelNet,mu_s[i][2])]=f[I(VelNet,mu_s[i][0])][I(VelNet,mu_s[i][1])][I(VelNet,mu_s[i][2])]+r[i]*C*Delta;
+            f[I(a[i][0])][I(a[i][1])][I(a[i][2])]=f[I(a[i][0])][I(a[i][1])][I(a[i][2])]-C*Delta;
+            f[I(a[i][3])][I(a[i][4])][I(a[i][5])]=f[I(a[i][3])][I(a[i][4])][I(a[i][5])]-C*Delta;
+            f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]=f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]+(1-r[i])*C*Delta;
+            f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]=f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]+(1-r[i])*C*Delta;
+            f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]=f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]+r[i]*C*Delta;
+            f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]=f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]+r[i]*C*Delta;
         }
         //cout<<endl<<r[i]<<" "<<1-r[i]<<" "<<C*Delta<<"  "<<(1-r[i])*C*Delta<<"  "<<r[i]*C*Delta<<endl;
     }
@@ -743,7 +730,7 @@ for(t=0;t<t_max;t++)
         {
             for(int k=0;k<N_z;k++)
             {
-                nc+=f[i][j][k];
+                nc+=f[i][j][k]*0.48*0.48*0.48*288*288*288;
             }
         }
     }    
@@ -757,7 +744,7 @@ nc=0.0;
         {
             for(int k=0;k<N_z;k++)
             {
-                nc+=f[i][j][k];
+                nc+=f[i][j][k]*0.48*0.48*0.48*288*288*288;
             }
         }
     }    
@@ -777,13 +764,13 @@ nc=0.0;
     out.open("Timelong");
     for(int i=0;i<t_max;i++)
     {
-        out<<i<<" "<<T_long[i]*0.000002093*300<<endl;
+        out<<i<<" "<<T_long[i]*0.000002093*300*0.48*0.48*0.48*288*288*288<<endl;
     }
     out.close();
     out.open("Time");
     for(int i=0;i<t_max;i++)
     {
-        out<<i<<" "<<T[i]*0.000002093*300<<endl;
+        out<<i<<" "<<T[i]*0.000002093*300*0.48*0.48*0.48*288*288*288<<endl;
     }
     out.close();
     out.open("Hfunc");
