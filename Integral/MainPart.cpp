@@ -11,9 +11,9 @@ using namespace std;
 #define _USE_MATH_DEFINES
 const int N=20;
 const double Bltzmn=1.380649*1.0e-23;
-const double mass=2.6*1.0e-26;
+const double mass=6.65*1.0e-27;
 const double Temp=300.0;
-const double E_cut=4.8;//Параметр для обрезания сферы
+const double E_cut=5;//Параметр для обрезания сферы
 //Метод для быстрого удаления элемента из матрицы
 template <class ForwardIt, class SortUniqIndsFwdIt>
 inline ForwardIt remove_at(
@@ -83,13 +83,14 @@ int main()
     vector<double> E_cm;
     double minDist;
     double E_check;
+    long double Dlm, Dlms,Dab;
     vector<vector<double> >lam;
     vector<vector<double> >lam_s;
     vector<vector<double> >mu;
     vector<vector<double> >mu_s;
     double E_near_energy=0.0;
     double dXi_x,dXi_y,dXi_z;
-    double C;//Константа при интегрировании
+    long double C;//Константа при интегрировании
     double ag;//Модуль вектора g
     double gxy;//gxy^2=gx^2+gy^2
     double E1_2, E_2;//Проверка 
@@ -107,24 +108,20 @@ int main()
     //cout<<"Enter p-> ";
     //cin>>p;
     int K_b[8];
+    int uy=0;
     int b=20285;
     //cout<<"Enter b-> ";
     //cin>>b;
     int t, t_max=100;
     cout<<"Enter max t-> ";
     cin>>t_max;
-    double tau=55000;//Шаг интегрирования
-    /*cout<<"Enter C-> ";
-    cin>>C;m,m,.
-    */
-    //C=-348816/p*tau;
-    //C=-4.15;
-    C=+tau;
+    double Nu;
+    double tau=1.0/(sqrt(Bltzmn*Temp/mass)*M_PI*sqrt(2));//Шаг интегрирования
     //cout<<"Enter tau-> ";
     //cin>>tau;
     choose_what_to_print=0;
     double rel[3];
-    double Delta;//Параметр для интегрирования
+    long double Delta;//Параметр для интегрирования
     double f[N_x][N_y][N_z];//Функции распределения
     double f1[N_x][N_y][N_z];
     //Заполняем н у функции распределения
@@ -142,9 +139,9 @@ int main()
     {
         VelNet[i]=-E_cut+(i+0.5)*2*E_cut/N;
     }
-    dXi_x=0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
-    dXi_y=0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
-    dXi_z=0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
+    dXi_x=4.0/N*sqrt(3*Bltzmn*Temp/mass);
+    dXi_y=4.0/N*sqrt(3*Bltzmn*Temp/mass);
+    dXi_z=4.0/N*sqrt(3*Bltzmn*Temp/mass);
     double msr=dXi_x*dXi_y*dXi_z;
     for(int i=0;i<N_x;i++)
     {
@@ -154,15 +151,16 @@ int main()
             {
                 if(sqrt((VelNet[i])*(VelNet[i])+VelNet[j]*VelNet[j]+VelNet[k]*VelNet[k])<E_cut)
                 {
-                f[i][j][k]=0.5*pow(mass/(M_PI*Bltzmn*Temp),1.5)*
+                f[i][j][k]=0.5*pow(1.0/(M_PI),1.5)*
                 (
-                    exp(-mass/(Bltzmn*Temp)*
-                    ((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)-sqrt((3*Bltzmn*Temp)/(2*mass)))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)-sqrt((3*Bltzmn*Temp)/(2*mass)))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))
+                    exp(
+                    -((VelNet[i]*2.0*sqrt(3.0)/E_cut-sqrt(1.5))*(VelNet[i]*2.0*sqrt(3.0)/E_cut-sqrt(1.5))+VelNet[j]*2.0*sqrt(3.0)/E_cut*VelNet[j]*2.0*sqrt(3.0)/E_cut+VelNet[k]*2.0*sqrt(3.0)/E_cut*VelNet[k]*2.0*sqrt(3.0)/E_cut)
                     )+
-                    exp(-mass/(Bltzmn*Temp)*
-                    ((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+sqrt((3*Bltzmn*Temp)/(2*mass)))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+sqrt((3*Bltzmn*Temp)/(2*mass)))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))
+                    exp(
+                    -((VelNet[i]*2.0*sqrt(3.0)/E_cut+sqrt(1.5))*(VelNet[i]*2.0*sqrt(3.0)/E_cut+sqrt(1.5))+VelNet[j]*2.0*sqrt(3.0)/E_cut*VelNet[j]*2.0*sqrt(3.0)/E_cut+VelNet[k]*2.0*sqrt(3.0)/E_cut*VelNet[k]*2.0*sqrt(3.0)/E_cut)
                     )
                 );
+                Nu++;
                 nc+=f[i][j][k]*msr;
                 }
                 else
@@ -174,8 +172,22 @@ int main()
             }
         }
     }
+ for(int i=0;i<N_x;i++)
+    {
+        for(int j=0;j<N_y;j++)
+        {
+            for(int k=0;k<N_z;k++)
+            {
+                f[i][j][k]=f[i][j][k]/(nc);
+            }
+        }
+    }
+    C=tau*M_PI*M_PI/3.0*Nu*(2*sqrt(3.0*Bltzmn*Temp/mass))*(2*sqrt(3.0*Bltzmn*Temp/mass))*(2*sqrt(3.0*Bltzmn*Temp/mass))/p;
     T_Zero=T_Zero*mass/(3*Bltzmn*nc);
     cout<<"T[0]="<<T_Zero<<endl;
+    cout<<"N in sphere="<<Nu<<endl;
+    cout<<"C="<<C<<endl;
+    cout<<"tau="<<tau<<endl;
     vector<double> r;
 //Печать в файл
     ofstream out;
@@ -671,6 +683,9 @@ for(int i=0;i<N_x;i++)
         {
             rel[j]=a[i][j]-a[i][j+3];
         }
+        Dlm=f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])];
+        Dlms=f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]*f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])];
+        Dab=f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])];
         //cout<<endl<<f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]<<endl;
         if((f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]>1.0e-15)&&(f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]
         >1.0e-15)){
@@ -681,19 +696,24 @@ for(int i=0;i<N_x;i++)
         else {Delta=-f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])]*
         sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);}
         //Delta=(pow(f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]*f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])],r[i])*pow(f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])],r[i])-f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])])*sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2]);
-        if(f[I(a[i][0])][I(a[i][1])][I(a[i][2])]+C*Delta>=0||
-        f[I(a[i][3])][I(a[i][4])][I(a[i][5])]+C*Delta>=0||
-        f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]-(1-r[i])*C*Delta>=0||
-        f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-(1-r[i])*C*Delta>=0||
-        f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]-r[i]*C*Delta>=0||
-        f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]-r[i]*C*Delta>=0)
+
+        if(f[I(a[i][0])][I(a[i][1])][I(a[i][2])]+C*Delta<0||
+        f[I(a[i][3])][I(a[i][4])][I(a[i][5])]+C*Delta<0||
+        f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]-(1-r[i])*C*Delta<0||
+        f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-(1-r[i])*C*Delta<0||
+        f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]-r[i]*C*Delta<0||
+        f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]-r[i]*C*Delta<0)
         {
-            f[I(a[i][0])][I(a[i][1])][I(a[i][2])]=f[I(a[i][0])][I(a[i][1])][I(a[i][2])]+C*Delta;
-            f[I(a[i][3])][I(a[i][4])][I(a[i][5])]=f[I(a[i][3])][I(a[i][4])][I(a[i][5])]+C*Delta;
-            f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]=f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]-(1-r[i])*C*Delta;
-            f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]=f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-(1-r[i])*C*Delta;
-            f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]=f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]-r[i]*C*Delta;
-            f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]=f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]-r[i]*C*Delta;
+            continue;
+        }
+        else
+        {
+            f[I(a[i][0])][I(a[i][1])][I(a[i][2])]+=C*Delta;
+            f[I(a[i][3])][I(a[i][4])][I(a[i][5])]+=C*Delta;
+            f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]-=(1-r[i])*C*Delta;
+            f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-=(1-r[i])*C*Delta;
+            f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]-=r[i]*C*Delta;
+            f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]-=r[i]*C*Delta;
         }
         //cout<<endl<<r[i]<<" "<<1-r[i]<<" "<<C*Delta<<"  "<<(1-r[i])*C*Delta<<"  "<<r[i]*C*Delta<<endl;
     }
@@ -715,10 +735,10 @@ for(int i=0;i<N_x;i++)
             for(int k=1;k<N_z;k++)
             {
                 konst_to_ln=(f[i][j][k]*f[i][j][k]);
-                if(f[i][j][k]*f[i][j][k]>1.0e-10)
+                if(konst_to_ln>0)
                 {
-                H[t]+=f[i][j][k]*0.5*log(konst_to_ln);
-                }
+                    H[t]+=f[i][j][k]*0.5*log(konst_to_ln)*msr;
+                }  
                 T[t]+=msr*(f[i][j][k])*((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0));
 
                 T_long[t]+=f[i][j][k]*VelNet[i]*VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*msr;
@@ -781,4 +801,5 @@ nc=0.0;
         out<<i<<" "<<H[i]<<endl;
     }
     out.close();
+    cout<<"less t zero"<<uy<<endl;
 }
