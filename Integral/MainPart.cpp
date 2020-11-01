@@ -9,10 +9,10 @@
 #include "workwVectors.h"
 using namespace std;
 #define _USE_MATH_DEFINES
-const int N=2;
+const int N=20;
 const double Bltzmn=1.380649*1.0e-23;
-const double mass=6.65*1.0e-27;
-const double Temp=200.0;
+const double mass=2.6*1.0e-26;
+const double Temp=300.0;
 const double E_cut=4.8;//Параметр для обрезания сферы
 //Метод для быстрого удаления элемента из матрицы
 template <class ForwardIt, class SortUniqIndsFwdIt>
@@ -88,6 +88,7 @@ int main()
     vector<vector<double> >mu;
     vector<vector<double> >mu_s;
     double E_near_energy=0.0;
+    double dXi_x,dXi_y,dXi_z;
     double C;//Константа при интегрировании
     double ag;//Модуль вектора g
     double gxy;//gxy^2=gx^2+gy^2
@@ -118,7 +119,7 @@ int main()
     */
     //C=-348816/p*tau;
     //C=-4.15;
-    C=-tau;
+    C=+tau;
     //cout<<"Enter tau-> ";
     //cin>>tau;
     choose_what_to_print=0;
@@ -141,6 +142,10 @@ int main()
     {
         VelNet[i]=-E_cut+(i+0.5)*2*E_cut/N;
     }
+    dXi_x=0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
+    dXi_y=0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
+    dXi_z=0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
+    double msr=dXi_x*dXi_y*dXi_z;
     for(int i=0;i<N_x;i++)
     {
         for(int j=0;j<N_y;j++)
@@ -158,19 +163,19 @@ int main()
                     ((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+sqrt((3*Bltzmn*Temp)/(2*mass)))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+sqrt((3*Bltzmn*Temp)/(2*mass)))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))
                     )
                 );
-                nc+=f[i][j][k]*0.48*0.48*0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
+                nc+=f[i][j][k]*msr;
                 }
                 else
                 {
                 f[i][j][k]=0.0;    
-                nc+=f[i][j][k]*0.48*0.48*0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
+                nc+=f[i][j][k]*msr;
                 }
-                T_Zero+=(f[i][j][k])*((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))*0.48*0.48*0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);                
+                T_Zero+=(f[i][j][k])*((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))*msr;                
             }
         }
     }
-    T_Zero=T_Zero/nc;
-    cout<<"T[0]="<<T_Zero*mass/(3*Bltzmn)<<endl;
+    T_Zero=T_Zero*mass/(3*Bltzmn*nc);
+    cout<<"T[0]="<<T_Zero<<endl;
     vector<double> r;
 //Печать в файл
     ofstream out;
@@ -212,8 +217,7 @@ cout<<"n before"<<nc<<endl;
 //Цикл по времени
 for(t=0;t<t_max;t++)
 {
-    n=p;
-    a=Nlrg(a,n,8);
+    a=Nlrg(a,p,8);
     Eta_cube=Nlrg(Eta_cube,8,3);
     E_cm.resize(3);
     //Получим массив вида n строк и 8 столбцов, первое число индексирует номер соударяющейся пары, а второй элемент точки
@@ -266,8 +270,7 @@ for(t=0;t<t_max;t++)
         }
     }
     a.erase(remove_at(a.begin(), a.end(), Elements_to_erase.begin(), Elements_to_erase.end()), a.end());
-    n=a.size();
-    g=Nlrg(g,n,3);
+    g=Nlrg(g,a.size(),3);
     //Теперь находим относительные скорости
     for(int j=0;j<a.size();j++)
     {
@@ -289,11 +292,10 @@ for(t=0;t<t_max;t++)
     g.erase(remove_at(g.begin(), g.end(), Elements_to_erase.begin(), Elements_to_erase.end()), g.end());
     cout<<a.size()<<endl;
     //Тут уже отброшены все наподходящие а и g
-    n=a.size();
-    g1=Nlrg(g1,n,3);
-    E1=Nlrg(E1,n,6);
-    Def_ang.resize(n);
-    E_near=Nlrg(E_near,n,6);
+    g1=Nlrg(g1,a.size(),3);
+    E1=Nlrg(E1,a.size(),6);
+    Def_ang.resize(a.size());
+    E_near=Nlrg(E_near,a.size(),6);
     //Находим углы отклонения
     for(int i=0;i<Def_ang.size();i++)
     {
@@ -338,10 +340,6 @@ for(t=0;t<t_max;t++)
     a.erase(remove_at(a.begin(), a.end(), Elements_to_erase.begin(), Elements_to_erase.end()), a.end());
     E1.erase(remove_at(E1.begin(), E1.end(), Elements_to_erase.begin(), Elements_to_erase.end()), E1.end());
     E_near.erase(remove_at(E_near.begin(), E_near.end(), Elements_to_erase.begin(), Elements_to_erase.end()), E_near.end());
-    g.erase(remove_at(g.begin(), g.end(), Elements_to_erase.begin(), Elements_to_erase.end()), g.end());
-    g1.erase(remove_at(g1.begin(), g1.end(), Elements_to_erase.begin(), Elements_to_erase.end()), g1.end());
-    Def_ang.erase(remove_at(Def_ang.begin(), Def_ang.end(), Elements_to_erase.begin(), Elements_to_erase.end()), Def_ang.end());
-    n=a.size();
 //Тут будет реализован проекционный метод
     //Ищем ближайшие точки к  E1
     for(int i=0;i<E1.size();i++)
@@ -363,15 +361,15 @@ for(t=0;t<t_max;t++)
     a.erase(remove_at(a.begin(), a.end(), Elements_to_erase.begin(), Elements_to_erase.end()), a.end());
     E1.erase(remove_at(E1.begin(), E1.end(), Elements_to_erase.begin(), Elements_to_erase.end()), E1.end());
     E_near.erase(remove_at(E_near.begin(), E_near.end(), Elements_to_erase.begin(), Elements_to_erase.end()), E_near.end());
-    g.erase(remove_at(g.begin(), g.end(), Elements_to_erase.begin(), Elements_to_erase.end()), g.end());
-    g1.erase(remove_at(g1.begin(), g1.end(), Elements_to_erase.begin(), Elements_to_erase.end()), g1.end());
-    Def_ang.erase(remove_at(Def_ang.begin(), Def_ang.end(), Elements_to_erase.begin(), Elements_to_erase.end()), Def_ang.end());
-    n=a.size();
+   // g.erase(remove_at(g.begin(), g.end(), Elements_to_erase.begin(), Elements_to_erase.end()), g.end());
+   // g1.erase(remove_at(g1.begin(), g1.end(), Elements_to_erase.begin(), Elements_to_erase.end()), g1.end());
+   // Def_ang.erase(remove_at(Def_ang.begin(), Def_ang.end(), Elements_to_erase.begin(), Elements_to_erase.end()), Def_ang.end());
+   // n=a.size();
     //Создаем матрицы для скоростей в проекционном методе
-    lam=Nlrg(lam,n,3);
-    lam_s=Nlrg(lam_s,n,3);
-    mu=Nlrg(mu,n,3);
-    mu_s=Nlrg(mu_s,n,3);
+    lam=Nlrg(lam,a.size(),3);
+    lam_s=Nlrg(lam_s,a.size(),3);
+    mu=Nlrg(mu,a.size(),3);
+    mu_s=Nlrg(mu_s,a.size(),3);
     Elements_to_erase.clear();
     //Получили Новые массивы и набор точек в прве скоростей и нужного размера
 //Далее идет проекционный метод
@@ -683,29 +681,19 @@ for(int i=0;i<N_x;i++)
         else {Delta=-f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])]*
         sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);}
         //Delta=(pow(f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]*f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])],r[i])*pow(f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])],r[i])-f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])])*sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2]);
-        if(f[I(a[i][0])][I(a[i][1])][I(a[i][2])]-C*Delta<1.0e-15||
-        f[I(a[i][3])][I(a[i][4])][I(a[i][5])]-C*Delta<1.0e-15||
-        f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]+(1-r[i])*C*Delta<1.0e-15||
-        f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]+(1-r[i])*C*Delta<1.0e-15||
-        f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]+r[i]*C*Delta<1.0e-15||
-        f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]+r[i]*C*Delta<1.0e-15)
-        {/*
-            f[I(a[i][0])][I(a[i][1])][I(a[i][2])]=f[I(a[i][0])][I(a[i][1])][I(a[i][2])];
-            f[I(a[i][3])][I(a[i][4])][I(a[i][5])]=f[I(a[i][3])][I(a[i][4])][I(a[i][5])];
-            f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]=f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])];
-            f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]=f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])];
-            f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]=f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])];
-            f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]=f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])];
-        */
-        }
-        else
+        if(f[I(a[i][0])][I(a[i][1])][I(a[i][2])]+C*Delta>=0||
+        f[I(a[i][3])][I(a[i][4])][I(a[i][5])]+C*Delta>=0||
+        f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]-(1-r[i])*C*Delta>=0||
+        f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-(1-r[i])*C*Delta>=0||
+        f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]-r[i]*C*Delta>=0||
+        f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]-r[i]*C*Delta>=0)
         {
-            f[I(a[i][0])][I(a[i][1])][I(a[i][2])]=f[I(a[i][0])][I(a[i][1])][I(a[i][2])]-C*Delta;
-            f[I(a[i][3])][I(a[i][4])][I(a[i][5])]=f[I(a[i][3])][I(a[i][4])][I(a[i][5])]-C*Delta;
-            f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]=f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]+(1-r[i])*C*Delta;
-            f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]=f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]+(1-r[i])*C*Delta;
-            f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]=f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]+r[i]*C*Delta;
-            f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]=f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]+r[i]*C*Delta;
+            f[I(a[i][0])][I(a[i][1])][I(a[i][2])]=f[I(a[i][0])][I(a[i][1])][I(a[i][2])]+C*Delta;
+            f[I(a[i][3])][I(a[i][4])][I(a[i][5])]=f[I(a[i][3])][I(a[i][4])][I(a[i][5])]+C*Delta;
+            f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]=f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]-(1-r[i])*C*Delta;
+            f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]=f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-(1-r[i])*C*Delta;
+            f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]=f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]-r[i]*C*Delta;
+            f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]=f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]-r[i]*C*Delta;
         }
         //cout<<endl<<r[i]<<" "<<1-r[i]<<" "<<C*Delta<<"  "<<(1-r[i])*C*Delta<<"  "<<r[i]*C*Delta<<endl;
     }
@@ -731,9 +719,9 @@ for(int i=0;i<N_x;i++)
                 {
                 H[t]+=f[i][j][k]*0.5*log(konst_to_ln);
                 }
-                T[t]+=(f[i][j][k])*((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0));
+                T[t]+=msr*(f[i][j][k])*((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0));
 
-                T_long[t]+=f[i][j][k]*VelNet[j]*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
+                T_long[t]+=f[i][j][k]*VelNet[i]*VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*msr;
             }
         }
     }
@@ -744,12 +732,11 @@ for(int i=0;i<N_x;i++)
         {
             for(int k=0;k<N_z;k++)
             {
-                nc+=f[i][j][k]*0.48*0.48*0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
+                nc+=f[i][j][k]*msr;
             }
         }
     }    
     int h=0;
-    T[t]=T[t]/nc;
     cout<<"n after"<<nc<<endl;
 }    
 nc=0.0;
@@ -759,7 +746,7 @@ nc=0.0;
         {
             for(int k=0;k<N_z;k++)
             {
-                nc+=f[i][j][k]*0.48*0.48*0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
+                nc+=f[i][j][k]*msr;
             }
         }
     }    
@@ -779,13 +766,13 @@ nc=0.0;
     out.open("Timelong");
     for(int i=0;i<t_max;i++)
     {
-        out<<i<<" "<<T_long[i]*0.000002093*300*0.48*0.48*0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)<<endl;
+        out<<i<<" "<<T_long[i]*(mass/(3*Bltzmn*nc))<<endl;
     }
     out.close();
     out.open("Time");
     for(int i=0;i<t_max;i++)
     {
-        out<<i<<" "<<(T[i]*mass/(3*Bltzmn)*0.48*0.48*0.48*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)/(mass/(3*Bltzmn)*T_Zero)-1)*100<<endl;
+        out<<i<<" "<<(T[i]*(mass/(3*Bltzmn*nc))/T_Zero-1)*100<<endl;
     }
     out.close();
     out.open("Hfunc");
