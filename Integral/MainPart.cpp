@@ -9,10 +9,11 @@
 #include "workwVectors.h"
 using namespace std;
 #define _USE_MATH_DEFINES
-const int N=20;
+const int N=20;//Размер скоростной сетки
 const double Bltzmn=1.380649*1.0e-23;
 const double mass=6.65*1.0e-27;
-const double Temp=300.0;
+const double Temp=400.0;
+const double stretch =2;//Для изменения максимальной скорости входящей в область
 const double E_cut=5;//Параметр для обрезания сферы
 //Метод для быстрого удаления элемента из матрицы
 template <class ForwardIt, class SortUniqIndsFwdIt>
@@ -22,14 +23,13 @@ inline ForwardIt remove_at(
     SortUniqIndsFwdIt ii_first,
     SortUniqIndsFwdIt ii_last)
 {
-    if(ii_first == ii_last) // no indices-to-remove are given
+    if(ii_first == ii_last)
         return last;
     typedef typename std::iterator_traits<ForwardIt>::difference_type diff_t;
     typedef typename std::iterator_traits<SortUniqIndsFwdIt>::value_type ind_t;
     ForwardIt destination = first + static_cast<diff_t>(*ii_first);
     while(ii_first != ii_last)
     {
-        // advance to an index after a chunk of elements-to-keep
         for(ind_t cur = *ii_first++; ii_first != ii_last; ++ii_first)
         {
             const ind_t nxt = *ii_first;
@@ -37,18 +37,16 @@ inline ForwardIt remove_at(
                 break;
             cur = nxt;
         }
-        // move the chunk of elements-to-keep to new destination
         const ForwardIt source_first =
             first + static_cast<diff_t>(*(ii_first - 1)) + 1;
         const ForwardIt source_last =
             ii_first != ii_last ? first + static_cast<diff_t>(*ii_first) : last;
         std::move(source_first, source_last, destination);
-        // std::copy(source_first, source_last, destination) // c++98 version
         destination += source_last - source_first;
     }
     return destination;
 }
-int modpow(int x,int n, int m)
+int modpow(int x,int n, int m)//Вычисление x^n mod m рекурсией
 {
     if(n==0) return 1%m;
     long long u=modpow(x,n/2,m);
@@ -56,11 +54,11 @@ int modpow(int x,int n, int m)
     if(n%2==1) u=(u*x)%m;
     return u;
 }
-double frac(double a)
+double frac(double a)//Вычисление дробного остатка
 {
     return a-(int)a;
 }
-int I(double a)
+int I(double a)//Возвращает индекс скорости по сетке скоростей 
 {
     return (E_cut+a)/(2*E_cut/N);
 }
@@ -69,8 +67,8 @@ int main()
 {
     //Переменнные
     int s = 0;//Для проверки каких-то параметров
-    int N_x=N,N_y=N,N_z=N;
-    double delta_E=E_cut*2.0/N;
+    int N_x=N,N_y=N,N_z=N;//Размеры сетки
+    double delta_E=E_cut*2.0/N;//Расстояние между скоростями
     vector<vector<double> > a;//Основной массив
     vector<vector<double> > g;//Относительные скорости
     vector<double> Def_ang;//Угол отклонения
@@ -80,87 +78,77 @@ int main()
     vector<vector<double> > Eta_cube;//Куб скоростей вокруг одной из разлетных
     vector<double> Energy_cube;//Значение энергий вокруг 
     double E_zero;//Энергия точной разлетной скорости
-    vector<double> E_cm;
+    vector<double> E_cm;//Энергия центра масс
     double minDist;
     double E_check;
+    
     long double Dlm, Dlms,Dab;
-    vector<vector<double> >lam;
-    vector<vector<double> >lam_s;
-    vector<vector<double> >mu;
-    vector<vector<double> >mu_s;
+    vector<vector<double> >lam;//Скорости после проецирования
+    vector<vector<double> >lam_s;//Скорости после проецирования
+    vector<vector<double> >mu;//Скорости после проецирования
+    vector<vector<double> >mu_s;//Скорости после проецирования
     double E_near_energy=0.0;
-    double dXi_x,dXi_y,dXi_z;
+    double dXi_x,dXi_y,dXi_z;//Для вычисления интеграла
     long double C;//Константа при интегрировании
     double ag;//Модуль вектора g
     double gxy;//gxy^2=gx^2+gy^2
     double E1_2, E_2;//Проверка 
     double E_0v, E_1v,E_2v;//Для вычисления r
-    vector<int> Elements_to_erase;
-    double nc=0.0;
+    vector<int> Elements_to_erase;//Массив индексов элементов, которые будут удалены
+    double nc=0.0;// Численная плотность
     double R[8];//Вектор случайного сдвига сетки коробова
     vector<vector<double> > g1;//Относительные скорости после соударения
     long int n; //Число пар соударяющихся частиц1
     int Appr_dot;
     double N_to_fin;
-    double konst_to_ln=0.0;
-    int p=100003;
-    int choose_what_to_print;
-    //cout<<"Enter p-> ";
-    //cin>>p;
+    double konst_to_ln=0.0;//Для проверки аргумента логарифма
+    int p=100003;//Размер сетки коробова
     int K_b[8];
     int uy=0;
-    int b=20285;
-    //cout<<"Enter b-> ";
-    //cin>>b;
-    int t, t_max=100;
+    int b=20285;//Первый коэфициент сетки
+    int t_max=1;//Число шагов по времени
     cout<<"Enter max t-> ";
     cin>>t_max;
-    double Nu;
-    double tau=1.0/(sqrt(Bltzmn*Temp/mass)*M_PI*sqrt(2));//Шаг интегрирования
-    //cout<<"Enter tau-> ";
-    //cin>>tau;
-    choose_what_to_print=0;
-    double rel[3];
+    double Nu;//Число точек сетки скоротей, попадающих во вписанную сферу
+    double tau=1.0/(sqrt(Bltzmn*Temp/mass)*M_PI*sqrt(2));//Шаг интегрирования по времени(длина свободного пробега на скорость)
+    double rel[3];//Лишний массив для относительных скоростей
     long double Delta;//Параметр для интегрирования
     double f[N_x][N_y][N_z];//Функции распределения
-    double f1[N_x][N_y][N_z];
-    //Заполняем н у функции распределения
     VelNet.resize(N); 
-    vector<double> T_long;
-    vector<double> H;
-    vector<double> T;
-    vector<double> u;
-    u.resize(t_max);
+    vector<double> T_long;//Продольная температура
+    vector<double> H;//Н-функции
+    vector<double> T;//Температура
     H.resize(t_max);
     T.resize(t_max);
-    double T_Zero=0.0;
-    T_long.resize(t_max);
-    for(int i=0;i<VelNet.size();i++)
+    double T_Zero=0.0;//Начальная температура(вычисляется по начальному значению сетки скоростей)
+    T_long.resize(t_max); 
+    for(int i=0;i<VelNet.size();i++)//Заполняем сетку скоростей
     {
         VelNet[i]=-E_cut+(i+0.5)*2*E_cut/N;
     }
-    dXi_x=4.0/N*sqrt(3*Bltzmn*Temp/mass);
+    dXi_x=4.0/N*sqrt(3*Bltzmn*Temp/mass);//Шаг по рельной скорости вдоль оси
     dXi_y=4.0/N*sqrt(3*Bltzmn*Temp/mass);
     dXi_z=4.0/N*sqrt(3*Bltzmn*Temp/mass);
     double msr=dXi_x*dXi_y*dXi_z;
-    for(int i=0;i<N_x;i++)
+//Функция распределния вида f(x,y,z)=A{exp(-(Vx-U)^2-Vy^2-Vz^2)+exp(-(Vx+U)^2-Vy^2-Vz^2)} Она симметрична, но я это не использую
+    for(int i=0;i<N_x;i++)//Заполняем массив функци распределения н.у.
     {
         for(int j=0;j<N_y;j++)
         {
             for(int k=0;k<N_z;k++)
             {
-                if(sqrt((VelNet[i])*(VelNet[i])+VelNet[j]*VelNet[j]+VelNet[k]*VelNet[k])<E_cut)
+                if(sqrt((VelNet[i])*(VelNet[i])+VelNet[j]*VelNet[j]+VelNet[k]*VelNet[k])<E_cut)//Попадает ли скорость в сферу
                 {
                 f[i][j][k]=0.5*pow(1.0/(M_PI),1.5)*
                 (
                     exp(
-                    -((VelNet[i]*2.0*sqrt(3.0)/E_cut-sqrt(1.5))*(VelNet[i]*2.0*sqrt(3.0)/E_cut-sqrt(1.5))+VelNet[j]*2.0*sqrt(3.0)/E_cut*VelNet[j]*2.0*sqrt(3.0)/E_cut+VelNet[k]*2.0*sqrt(3.0)/E_cut*VelNet[k]*2.0*sqrt(3.0)/E_cut)
+                    -((VelNet[i]*stretch*sqrt(3.0)/E_cut-sqrt(1.5))*(VelNet[i]*stretch*sqrt(3.0)/E_cut-sqrt(1.5))+VelNet[j]*stretch*sqrt(3.0)/E_cut*VelNet[j]*stretch*sqrt(3.0)/E_cut+VelNet[k]*stretch*sqrt(3.0)/E_cut*VelNet[k]*stretch*sqrt(3.0)/E_cut)
                     )+
                     exp(
-                    -((VelNet[i]*2.0*sqrt(3.0)/E_cut+sqrt(1.5))*(VelNet[i]*2.0*sqrt(3.0)/E_cut+sqrt(1.5))+VelNet[j]*2.0*sqrt(3.0)/E_cut*VelNet[j]*2.0*sqrt(3.0)/E_cut+VelNet[k]*2.0*sqrt(3.0)/E_cut*VelNet[k]*2.0*sqrt(3.0)/E_cut)
+                    -((VelNet[i]*stretch*sqrt(3.0)/E_cut+sqrt(1.5))*(VelNet[i]*stretch*sqrt(3.0)/E_cut+sqrt(1.5))+VelNet[j]*stretch*sqrt(3.0)/E_cut*VelNet[j]*stretch*sqrt(3.0)/E_cut+VelNet[k]*stretch*sqrt(3.0)/E_cut*VelNet[k]*stretch*sqrt(3.0)/E_cut)
                     )
                 );
-                Nu++;
+                Nu++;//Сколько точек попадает в сферу
                 nc+=f[i][j][k]*msr;
                 }
                 else
@@ -168,11 +156,11 @@ int main()
                 f[i][j][k]=0.0;    
                 nc+=f[i][j][k]*msr;
                 }
-                T_Zero+=(f[i][j][k])*((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))*msr;                
+                T_Zero+=(f[i][j][k])*((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch))*msr;                
             }
         }
     }
- for(int i=0;i<N_x;i++)
+ for(int i=0;i<N_x;i++)//Нормируем, чтобы плотность была равна 1
     {
         for(int j=0;j<N_y;j++)
         {
@@ -182,44 +170,28 @@ int main()
             }
         }
     }
-    C=tau*M_PI*M_PI/3.0*Nu*(2*sqrt(3.0*Bltzmn*Temp/mass))*(2*sqrt(3.0*Bltzmn*Temp/mass))*(2*sqrt(3.0*Bltzmn*Temp/mass))/p;
-    T_Zero=T_Zero*mass/(3*Bltzmn*nc);
+    C=tau*M_PI*M_PI/3.0*Nu*(2*sqrt(3.0*Bltzmn*Temp/mass))*(2*sqrt(3.0*Bltzmn*Temp/mass))*(2*sqrt(3.0*Bltzmn*Temp/mass))/p;//Параметр для вычисления интеграла
+    T_Zero=T_Zero*mass/(3*Bltzmn*nc);//Итоговое значение начальной температуры
     cout<<"T[0]="<<T_Zero<<endl;
     cout<<"N in sphere="<<Nu<<endl;
     cout<<"C="<<C<<endl;
     cout<<"tau="<<tau<<endl;
-    vector<double> r;
+    vector<double> r;//Индексы для интерполяции
 //Печать в файл
     ofstream out;
     out.open("resultfv");
-    if(choose_what_to_print==0) 
-    {
-        for(int i=0;i<N_x;i++)
+    for(int i=0;i<N_x;i++)
         {
             for(int j=0;j<N_y;j++)
             {
                 for(int k=0;k<N_z;k++)
                 {
-                    out<<VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)<<" "<<f[i][j][k]<<endl;
+                    out<<VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch)<<" "<<f[i][j][k]<<endl;
                 }
             }
         }
-    }
-    else
-    {
-        for(int i=0;i<N_x;i++)
-        {
-            for(int j=0;j<N_y;j++)
-            {
-                for(int k=0;k<N_z;k++)
-                {
-                    out<<VelNet[k]<<" "<<f[i][j][k]<<endl;
-                }
-            }
-        }
-    }
     out.close();
-    K_b[0]=1;
+    K_b[0]=1;//Коэфиициенты сетки коробова
     K_b[1]=b;
     for(int i=2;i<8;i++)
     {
@@ -227,10 +199,10 @@ int main()
     }
 cout<<"n before"<<nc<<endl;
 //Цикл по времени
-for(t=0;t<t_max;t++)
+for(int t=0;t<t_max;t++)
 {
-    a=Nlrg(a,p,8);
-    Eta_cube=Nlrg(Eta_cube,8,3);
+    a=Nlrg(a,p,8);//Число соударений
+    Eta_cube=Nlrg(Eta_cube,8,3);//Число ближайших точек
     E_cm.resize(3);
     //Получим массив вида n строк и 8 столбцов, первое число индексирует номер соударяющейся пары, а второй элемент точки
     //Заполняем массив сеткой Коробова размера p
@@ -247,6 +219,7 @@ for(t=0;t<t_max;t++)
     {
         R[i] = double(rand()) / (double(RAND_MAX) + 1.0);
     }
+    //Сдвигаем по модулю 1
     for(int i=0;i<a.size();i++)
     {
         for(int j=0;j<a[i].size();j++)
@@ -264,7 +237,7 @@ for(t=0;t<t_max;t++)
         }
         a[j][7]=a[j][7]*2.0*M_PI;
     }
-    //Теперь приближаем к ней 
+    //Теперь приближаем к сетке скоростей
     for(int i=0;i<a.size();i++)
     {
         for(int j=0;j<6;j++)
@@ -281,6 +254,7 @@ for(t=0;t<t_max;t++)
             Elements_to_erase.push_back(i);
         }
     }
+    //Удаляем элементы, скорость которых не попадает в сферу
     a.erase(remove_at(a.begin(), a.end(), Elements_to_erase.begin(), Elements_to_erase.end()), a.end());
     g=Nlrg(g,a.size(),3);
     //Теперь находим относительные скорости
@@ -302,7 +276,7 @@ for(t=0;t<t_max;t++)
     }
     a.erase(remove_at(a.begin(), a.end(), Elements_to_erase.begin(), Elements_to_erase.end()), a.end());
     g.erase(remove_at(g.begin(), g.end(), Elements_to_erase.begin(), Elements_to_erase.end()), g.end());
-    cout<<a.size()<<endl;
+    cout<<a.size()<<endl;//Остается приблизительно 1/4 от всех точек
     //Тут уже отброшены все наподходящие а и g
     g1=Nlrg(g1,a.size(),3);
     E1=Nlrg(E1,a.size(),6);
@@ -334,7 +308,6 @@ for(t=0;t<t_max;t++)
     //Тут имея относительные скорости получим новые скорсти частиц после соударения
     for(int i=0;i<E1.size();i++)
     {
-        //Верно
         for(int k=0;k<3;k++)
         {
             E1[i][k]=(a[i][k]+a[i][k+3])*0.5-g1[i][k]*0.5;         
@@ -362,7 +335,7 @@ for(t=0;t<t_max;t++)
         }
     }
     Elements_to_erase.clear();
-    //Проверяем, лежит ли ближайшая в точке(если не лежит то мы сразу отбрасываем соударение)
+    //Проверяем, лежит ли ближайшая точка в сфере (если не лежит то мы сразу отбрасываем соударение)
     for(int i=0;i<a.size();i++)
     {
         if((ModVector(E_near[i],1,3)>=E_cut)||(ModVector(E_near[i],4,6)>=E_cut))//Проверка на равенство нулю
@@ -373,10 +346,6 @@ for(t=0;t<t_max;t++)
     a.erase(remove_at(a.begin(), a.end(), Elements_to_erase.begin(), Elements_to_erase.end()), a.end());
     E1.erase(remove_at(E1.begin(), E1.end(), Elements_to_erase.begin(), Elements_to_erase.end()), E1.end());
     E_near.erase(remove_at(E_near.begin(), E_near.end(), Elements_to_erase.begin(), Elements_to_erase.end()), E_near.end());
-   // g.erase(remove_at(g.begin(), g.end(), Elements_to_erase.begin(), Elements_to_erase.end()), g.end());
-   // g1.erase(remove_at(g1.begin(), g1.end(), Elements_to_erase.begin(), Elements_to_erase.end()), g1.end());
-   // Def_ang.erase(remove_at(Def_ang.begin(), Def_ang.end(), Elements_to_erase.begin(), Elements_to_erase.end()), Def_ang.end());
-   // n=a.size();
     //Создаем матрицы для скоростей в проекционном методе
     lam=Nlrg(lam,a.size(),3);
     lam_s=Nlrg(lam_s,a.size(),3);
@@ -384,13 +353,14 @@ for(t=0;t<t_max;t++)
     mu_s=Nlrg(mu_s,a.size(),3);
     Elements_to_erase.clear();
     //Получили Новые массивы и набор точек в прве скоростей и нужного размера
-//Далее идет проекционный метод
-    //Начало самого проекционного метода
+    //Далее идет проекционный метод
     for(int i=0;i<a.size();i++)
     {
-        Energy_cube.resize(8);//Тк алгоритм подразумевает отбрасывание лишних элементов массива
+        Energy_cube.resize(8);
         Eta_cube=Nlrg(Eta_cube,8,3);//Аналогично
         //Находим покомпонентно ближайшие точки к разлетной скорости Е1[i][0..2]
+        //Т.е. берем точку, затем смотрим как она расположена относительно точной и строим куб
+        //Все углы проиндексированы и в зависимости от их расположения добавляется или вычитается шаг сетки
         if(E1[i][0]<E_near[i][0])
         {
             Eta_cube[0][0]=E_near[i][0]-delta_E;
@@ -477,6 +447,11 @@ for(t=0;t<t_max;t++)
         (E_near[i][1]-E_cm[1])*(E_near[i][1]-E_cm[1])+
         (E_near[i][2]-E_cm[2])*(E_near[i][2]-E_cm[2]);
         //Анализируем три случая
+/*
+1-Энергия точного = энергии ближайшего узла
+2-Энергия точного < энергии ближайшего узла
+3-Энергия точного > энергии ближайшего узла
+*/
         if((E_zero-E_near_energy)*(E_zero-E_near_energy)<1.0e-7)
         {
             for(int k=0;k<3;k++)
@@ -648,6 +623,7 @@ for(t=0;t<t_max;t++)
     mu.erase(remove_at(mu.begin(), mu.end(), Elements_to_erase.begin(), Elements_to_erase.end()), mu.end());
     mu_s.erase(remove_at(mu_s.begin(), mu_s.end(), Elements_to_erase.begin(), Elements_to_erase.end()), mu_s.end());
     r.resize(a.size());
+    //Тут находим r для интерполяции
     for(int i=0;i<a.size();i++)
     {
         E_0v=a[i][0]*a[i][0]+a[i][1]*a[i][1]+a[i][2]*a[i][2]+
@@ -667,36 +643,25 @@ for(t=0;t<t_max;t++)
     }
     
 //Теперь вычисляем интеграл
-for(int i=0;i<N_x;i++)
-    {
-        for(int j=0;j<N_y;j++)
-        {
-            for(int k=0;k<N_z;k++)
-            {
-                f1[i][j][k]=f[i][j][k];
-            }
-        }
-    }
     for(int i=0;i<a.size();i++)
     {
         for(int j=0;j<3;j++)
         {
-            rel[j]=a[i][j]-a[i][j+3];
+            rel[j]=a[i][j]-a[i][j+3];//Находим относительную скорость
         }
-        Dlm=f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])];
-        Dlms=f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]*f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])];
-        Dab=f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])];
-        //cout<<endl<<f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]<<endl;
         if((f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]>1.0e-15)&&(f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]
-        >1.0e-15)){
-        Delta=(pow(f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]*f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]/(f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]),r[i])*f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-
-        f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])])*
-        sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);
+        >1.0e-15))//Проверяем деление на ноль
+        {
+            Delta=(pow(f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]*f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]/(f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]),r[i])*f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-
+            f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])])*
+            sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch);
         }
-        else {Delta=-f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])]*
-        sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0);}
-        //Delta=(pow(f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]*f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])],r[i])*pow(f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])],r[i])-f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])])*sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2]);
-
+        else 
+        {
+            Delta=-f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])]*
+            sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch);
+        }
+        //Проверяем неотрицательность
         if(f[I(a[i][0])][I(a[i][1])][I(a[i][2])]+C*Delta<0||
         f[I(a[i][3])][I(a[i][4])][I(a[i][5])]+C*Delta<0||
         f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]-(1-r[i])*C*Delta<0||
@@ -715,7 +680,6 @@ for(int i=0;i<N_x;i++)
             f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]-=r[i]*C*Delta;
             f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]-=r[i]*C*Delta;
         }
-        //cout<<endl<<r[i]<<" "<<1-r[i]<<" "<<C*Delta<<"  "<<(1-r[i])*C*Delta<<"  "<<r[i]*C*Delta<<endl;
     }
 
 //Проверки
@@ -728,6 +692,7 @@ for(int i=0;i<N_x;i++)
     T[t]=0;
     T_long[t]=0;
     H[t]=0;
+    //Находим Температуры и Н-функцию в момент времени t
     for(int i=0;i<N_x;i++)
     {
         for(int j=0;j<N_y;j++)
@@ -739,12 +704,13 @@ for(int i=0;i<N_x;i++)
                 {
                     H[t]+=f[i][j][k]*0.5*log(konst_to_ln)*msr;
                 }  
-                T[t]+=msr*(f[i][j][k])*((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0));
+                T[t]+=msr*(f[i][j][k])*((VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch))*(VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch))+VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch)*VelNet[j]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch)+VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch)*VelNet[k]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch));
 
-                T_long[t]+=f[i][j][k]*VelNet[i]*VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)*msr;
+                T_long[t]+=f[i][j][k]*VelNet[i]*VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch)*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch)*msr;
             }
         }
     }
+    //Проверяем, что сохраняется плотность
     nc=0.0;
     for(int i=0;i<N_x;i++)
     {
@@ -759,6 +725,7 @@ for(int i=0;i<N_x;i++)
     int h=0;
     cout<<"n after"<<nc<<endl;
 }    
+//Конец цикла
 nc=0.0;
     for(int i=0;i<N_x;i++)
     {
@@ -771,6 +738,7 @@ nc=0.0;
         }
     }    
     cout<<"n after"<<nc<<endl;
+    //Результаты выводятся
     out.open("resultfvfin");
     for(int i=0;i<N_x;i++)
     {      
@@ -778,18 +746,18 @@ nc=0.0;
         {
             for(int k=0;k<N_z;k++)
             {
-                out<<VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/2.0)<<" "<<f[i][j][k]<<endl;
+                out<<VelNet[i]*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch)<<" "<<f[i][j][k]<<endl;
             }
         }
     }
     out.close();
-    out.open("Timelong");
+    out.open("Templong");
     for(int i=0;i<t_max;i++)
     {
         out<<i<<" "<<T_long[i]*(mass/(3*Bltzmn*nc))<<endl;
     }
     out.close();
-    out.open("Time");
+    out.open("Temp");
     for(int i=0;i<t_max;i++)
     {
         out<<i<<" "<<(T[i]*(mass/(3*Bltzmn*nc))/T_Zero-1)*100<<endl;
@@ -801,5 +769,4 @@ nc=0.0;
         out<<i<<" "<<H[i]<<endl;
     }
     out.close();
-    cout<<"less t zero"<<uy<<endl;
 }

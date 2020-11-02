@@ -13,7 +13,7 @@ void ZSI(vector<vector<double> >a, vector<vector<double> >b)
     {
         for(int j=0;j<3;j++)
         {
-            if((a[i][j]+a[i][j+3]-b[i][j]-b[i][j+3])*(a[i][j]+a[i][j+3]-b[i][j]-b[i][j+3])>1.0e-8)
+            if((a[i][j]+a[i][j+3]-b[i][j]-b[i][j+3])*(a[i][j]+a[i][j+3]-b[i][j]-b[i][j+3])>1.0e-8)//Проверяем равенство компонент векторов массы равны
             {
                 cout<<"MISTAKE  ";
             }
@@ -25,9 +25,9 @@ void ZSE(vector<vector<double> > a, vector<vector<double> > E1)
     double E1_2, E_2;
     for (int i=0;i<E1.size();i++)
     {
-        E1_2=E1[i][0]*E1[i][0] + E1[i][1]*E1[i][1] + E1[i][2]*E1[i][2] + E1[i][3]*E1[i][3] + E1[i][4]*E1[i][4] + E1[i][5]*E1[i][5];//Верно
-        E_2=a[i][0]*a[i][0] + a[i][1]*a[i][1] + a[i][2]*a[i][2] + a[i][3]*a[i][3] + a[i][4]*a[i][4] + a[i][5]*a[i][5];//Верно
-        if((E1_2-E_2)*(E1_2-E_2)>1.0e-8)
+        E1_2=E1[i][0]*E1[i][0] + E1[i][1]*E1[i][1] + E1[i][2]*E1[i][2] + E1[i][3]*E1[i][3] + E1[i][4]*E1[i][4] + E1[i][5]*E1[i][5];//Энергия первого
+        E_2=a[i][0]*a[i][0] + a[i][1]*a[i][1] + a[i][2]*a[i][2] + a[i][3]*a[i][3] + a[i][4]*a[i][4] + a[i][5]*a[i][5];//Энергия второго
+        if((E1_2-E_2)*(E1_2-E_2)>1.0e-8)//Если они не равны
         {
             cout<<"IT DOES NOT WORK";
             cout<<(E1_2-E_2)<<endl;
