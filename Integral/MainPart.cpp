@@ -11,8 +11,8 @@ using namespace std;
 #define _USE_MATH_DEFINES
 const int N=20;//Размер скоростной сетки
 const double Bltzmn=1.380649*1.0e-23;
-const double mass=6.65*1.0e-27;
-const double Temp=400.0;
+const double mass=2.6*1.0e-26;
+const double Temp=300.0;
 const double stretch =2;//Для изменения максимальной скорости входящей в область
 const double E_cut=5;//Параметр для обрезания сферы
 //Метод для быстрого удаления элемента из матрицы
@@ -82,6 +82,7 @@ int main()
     double minDist;
     double E_check;
     
+    
     long double Dlm, Dlms,Dab;
     vector<vector<double> >lam;//Скорости после проецирования
     vector<vector<double> >lam_s;//Скорости после проецирования
@@ -139,7 +140,7 @@ int main()
             {
                 if(sqrt((VelNet[i])*(VelNet[i])+VelNet[j]*VelNet[j]+VelNet[k]*VelNet[k])<E_cut)//Попадает ли скорость в сферу
                 {
-                f[i][j][k]=0.5*pow(1.0/(M_PI),1.5)*
+                f[i][j][k]=2.5*1.0e25*0.5*pow(1.0/(M_PI),1.5)*
                 (
                     exp(
                     -((VelNet[i]*stretch*sqrt(3.0)/E_cut-sqrt(1.5))*(VelNet[i]*stretch*sqrt(3.0)/E_cut-sqrt(1.5))+VelNet[j]*stretch*sqrt(3.0)/E_cut*VelNet[j]*stretch*sqrt(3.0)/E_cut+VelNet[k]*stretch*sqrt(3.0)/E_cut*VelNet[k]*stretch*sqrt(3.0)/E_cut)
@@ -160,7 +161,7 @@ int main()
             }
         }
     }
- for(int i=0;i<N_x;i++)//Нормируем, чтобы плотность была равна 1
+     for(int i=0;i<N_x;i++)//Нормируем, чтобы плотность была равна 1
     {
         for(int j=0;j<N_y;j++)
         {
@@ -170,6 +171,7 @@ int main()
             }
         }
     }
+
     C=tau*M_PI*M_PI/3.0*Nu*(2*sqrt(3.0*Bltzmn*Temp/mass))*(2*sqrt(3.0*Bltzmn*Temp/mass))*(2*sqrt(3.0*Bltzmn*Temp/mass))/p;//Параметр для вычисления интеграла
     T_Zero=T_Zero*mass/(3*Bltzmn*nc);//Итоговое значение начальной температуры
     cout<<"T[0]="<<T_Zero<<endl;
@@ -236,6 +238,7 @@ for(int t=0;t<t_max;t++)
             a[j][i]=2.0*E_cut*a[j][i]-E_cut;//Преобразование координат
         }
         a[j][7]=a[j][7]*2.0*M_PI;
+        a[j][6]=sqrt(a[j][6]);
     }
     //Теперь приближаем к сетке скоростей
     for(int i=0;i<a.size();i++)
@@ -282,6 +285,7 @@ for(int t=0;t<t_max;t++)
     E1=Nlrg(E1,a.size(),6);
     Def_ang.resize(a.size());
     E_near=Nlrg(E_near,a.size(),6);
+    r.resize(a.size());
     //Находим углы отклонения
     for(int i=0;i<Def_ang.size();i++)
     {
@@ -452,7 +456,8 @@ for(int t=0;t<t_max;t++)
 2-Энергия точного < энергии ближайшего узла
 3-Энергия точного > энергии ближайшего узла
 */
-        if((E_zero-E_near_energy)*(E_zero-E_near_energy)<1.0e-7)
+
+        if((E_zero-E_near_energy)*(E_zero-E_near_energy)<1.0e-10)
         {
             for(int k=0;k<3;k++)
             {
@@ -461,6 +466,7 @@ for(int t=0;t<t_max;t++)
                 mu[i][k]=E_near[i][k+3];
                 mu_s[i][k]=E_near[i][k+3];
             }
+            r[i]=1.0;
         }
 //Второй случай
         else if(E_zero<E_near_energy)
@@ -526,6 +532,14 @@ for(int t=0;t<t_max;t++)
                 {
                     lam[i][k]=Eta_cube[Appr_dot][k];
                     mu[i][k]=2.0*E_cm[k]-lam[i][k];
+                    E_0v=a[i][0]*a[i][0]+a[i][1]*a[i][1]+a[i][2]*a[i][2]+
+            a[i][3]*a[i][3]+a[i][4]*a[i][4]+a[i][5]*a[i][5];
+        E_1v=lam[i][0]*lam[i][0]+lam[i][1]*lam[i][1]+lam[i][2]*lam[i][2]+
+            mu[i][0]*mu[i][0]+mu[i][1]*mu[i][1]+mu[i][2]*mu[i][2];
+        E_2v=lam_s[i][0]*lam_s[i][0]+lam_s[i][1]*lam_s[i][1]+lam_s[i][2]*lam_s[i][2]+
+            mu_s[i][0]*mu_s[i][0]+mu_s[i][1]*mu_s[i][1]+mu_s[i][2]*mu_s[i][2];
+         r[i]=(E_0v-E_1v)/(E_2v-E_1v);
+         cout<<r[i]<<" "<<E_0v<<" "<<E_1v<<" "<<E_2v<<endl;
                 }
             }
             else
@@ -534,9 +548,9 @@ for(int t=0;t<t_max;t++)
                 {
                     lam_s[i][k]=0;
                     mu_s[i][k]=0;
+                    r[i]=M_PI;
                 } 
             }
-
             
         }
 //Третий случай
@@ -604,6 +618,14 @@ for(int t=0;t<t_max;t++)
                     lam_s[i][k]=Eta_cube[Appr_dot][k];
                     mu_s[i][k]=2.0*E_cm[k]-lam_s[i][k];
                 }
+                E_0v=a[i][0]*a[i][0]+a[i][1]*a[i][1]+a[i][2]*a[i][2]+
+            a[i][3]*a[i][3]+a[i][4]*a[i][4]+a[i][5]*a[i][5];
+        E_1v=lam[i][0]*lam[i][0]+lam[i][1]*lam[i][1]+lam[i][2]*lam[i][2]+
+            mu[i][0]*mu[i][0]+mu[i][1]*mu[i][1]+mu[i][2]*mu[i][2];
+        E_2v=lam_s[i][0]*lam_s[i][0]+lam_s[i][1]*lam_s[i][1]+lam_s[i][2]*lam_s[i][2]+
+            mu_s[i][0]*mu_s[i][0]+mu_s[i][1]*mu_s[i][1]+mu_s[i][2]*mu_s[i][2];
+         r[i]=(E_0v-E_1v)/(E_2v-E_1v);
+         cout<<r[i]<<" "<<E_0v<<" "<<E_1v<<" "<<E_2v<<endl;
             }
             else
             {
@@ -614,6 +636,7 @@ for(int t=0;t<t_max;t++)
                 } 
             }
         }
+        
     }
     a.erase(remove_at(a.begin(), a.end(), Elements_to_erase.begin(), Elements_to_erase.end()), a.end());
     E1.erase(remove_at(E1.begin(), E1.end(), Elements_to_erase.begin(), Elements_to_erase.end()), E1.end());
@@ -622,26 +645,7 @@ for(int t=0;t<t_max;t++)
     lam_s.erase(remove_at(lam_s.begin(), lam_s.end(), Elements_to_erase.begin(), Elements_to_erase.end()), lam_s.end());
     mu.erase(remove_at(mu.begin(), mu.end(), Elements_to_erase.begin(), Elements_to_erase.end()), mu.end());
     mu_s.erase(remove_at(mu_s.begin(), mu_s.end(), Elements_to_erase.begin(), Elements_to_erase.end()), mu_s.end());
-    r.resize(a.size());
-    //Тут находим r для интерполяции
-    for(int i=0;i<a.size();i++)
-    {
-        E_0v=a[i][0]*a[i][0]+a[i][1]*a[i][1]+a[i][2]*a[i][2]+
-            a[i][3]*a[i][3]+a[i][4]*a[i][4]+a[i][5]*a[i][5];
-        E_1v=lam[i][0]*lam[i][0]+lam[i][1]*lam[i][1]+lam[i][2]*lam[i][2]+
-            mu[i][0]*mu[i][0]+mu[i][1]*mu[i][1]+mu[i][2]*mu[i][2];
-        E_2v=lam_s[i][0]*lam_s[i][0]+lam_s[i][1]*lam_s[i][1]+lam_s[i][2]*lam_s[i][2]+
-            mu_s[i][0]*mu_s[i][0]+mu_s[i][1]*mu_s[i][1]+mu_s[i][2]*mu_s[i][2];
-        if((E_2v-E_1v)*(E_2v-E_1v)<1.0e-8||(E_0v-E_1v)*(E_0v-E_1v)<1.0e-8)
-        {
-            r[i]=1.0;
-        }
-        else
-        {
-            r[i]=(E_0v-E_1v)/(E_2v-E_1v);
-        }
-    }
-    
+    r.erase(remove_at(r.begin(), r.end(), Elements_to_erase.begin(), Elements_to_erase.end()), r.end());
 //Теперь вычисляем интеграл
     for(int i=0;i<a.size();i++)
     {
@@ -758,6 +762,12 @@ nc=0.0;
     }
     out.close();
     out.open("Temp");
+    for(int i=0;i<t_max;i++)
+    {
+        out<<i<<" "<<(T[i]*(mass/(3*Bltzmn*nc)))/*/T_Zero-1)*100*/<<endl;
+    }
+    out.close();
+    out.open("TempR");
     for(int i=0;i<t_max;i++)
     {
         out<<i<<" "<<(T[i]*(mass/(3*Bltzmn*nc))/T_Zero-1)*100<<endl;
