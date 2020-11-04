@@ -9,11 +9,11 @@
 #include "workwVectors.h"
 using namespace std;
 #define _USE_MATH_DEFINES
-const int N=20;//Размер скоростной сетки
+const int N=60;//Размер скоростной сетки
 const double Bltzmn=1.380649*1.0e-23;
 const double mass=2.6*1.0e-26;
 const double Temp=300.0;
-const double stretch =2;//Для изменения максимальной скорости входящей в область
+const double stretch =2.77;//Для изменения максимальной скорости входящей в область
 const double E_cut=5;//Параметр для обрезания сферы
 //Метод для быстрого удаления элемента из матрицы
 template <class ForwardIt, class SortUniqIndsFwdIt>
@@ -103,10 +103,10 @@ int main()
     int Appr_dot;
     double N_to_fin;
     double konst_to_ln=0.0;//Для проверки аргумента логарифма
-    int p=100003;//Размер сетки коробова
+    int p=2000003;//Размер сетки коробова
     int K_b[8];
     int uy=0;
-    int b=20285;//Первый коэфициент сетки
+    int b=832685;//Первый коэфициент сетки
     int t_max=1;//Число шагов по времени
     cout<<"Enter max t-> ";
     cin>>t_max;
@@ -172,7 +172,7 @@ int main()
         }
     }
 
-    C=tau*M_PI*M_PI/3.0*Nu*(2*sqrt(3.0*Bltzmn*Temp/mass))*(2*sqrt(3.0*Bltzmn*Temp/mass))*(2*sqrt(3.0*Bltzmn*Temp/mass))/p;//Параметр для вычисления интеграла
+    C=tau*M_PI*M_PI/3.0*Nu*(stretch*sqrt(3.0*Bltzmn*Temp/mass))*(stretch*sqrt(3.0*Bltzmn*Temp/mass))*(stretch*sqrt(3.0*Bltzmn*Temp/mass))/p;//Параметр для вычисления интеграла
     T_Zero=T_Zero*mass/(3*Bltzmn*nc);//Итоговое значение начальной температуры
     cout<<"T[0]="<<T_Zero<<endl;
     cout<<"N in sphere="<<Nu<<endl;
@@ -539,7 +539,15 @@ for(int t=0;t<t_max;t++)
         E_2v=lam_s[i][0]*lam_s[i][0]+lam_s[i][1]*lam_s[i][1]+lam_s[i][2]*lam_s[i][2]+
             mu_s[i][0]*mu_s[i][0]+mu_s[i][1]*mu_s[i][1]+mu_s[i][2]*mu_s[i][2];
          r[i]=(E_0v-E_1v)/(E_2v-E_1v);
-         cout<<r[i]<<" "<<E_0v<<" "<<E_1v<<" "<<E_2v<<endl;
+         if(r[i]*r[i]<1.0e-10)
+         {
+             r[i]=0.0;
+         }
+         if((r[i]-1.0)*(r[i]-1.0)<1.0e-10)
+         {
+             r[i]=1.0;
+         }
+         //cout<<r[i]<<" "<<E_0v<<" "<<E_1v<<" "<<E_2v<<endl;
                 }
             }
             else
@@ -548,7 +556,7 @@ for(int t=0;t<t_max;t++)
                 {
                     lam_s[i][k]=0;
                     mu_s[i][k]=0;
-                    r[i]=M_PI;
+                    r[i]=100;
                 } 
             }
             
@@ -625,7 +633,15 @@ for(int t=0;t<t_max;t++)
         E_2v=lam_s[i][0]*lam_s[i][0]+lam_s[i][1]*lam_s[i][1]+lam_s[i][2]*lam_s[i][2]+
             mu_s[i][0]*mu_s[i][0]+mu_s[i][1]*mu_s[i][1]+mu_s[i][2]*mu_s[i][2];
          r[i]=(E_0v-E_1v)/(E_2v-E_1v);
-         cout<<r[i]<<" "<<E_0v<<" "<<E_1v<<" "<<E_2v<<endl;
+         if(r[i]*r[i]<1.0e-10)
+         {
+             r[i]=0.0;
+         }
+         if((r[i]-1.0)*(r[i]-1.0)<1.0e-10)
+         {
+             r[i]=1.0;
+         }
+         //cout<<r[i]<<" "
             }
             else
             {
@@ -633,6 +649,7 @@ for(int t=0;t<t_max;t++)
                 {
                     lam_s[i][k]=0;
                     mu_s[i][k]=0;
+                    r[i]=100;
                 } 
             }
         }
@@ -647,6 +664,14 @@ for(int t=0;t<t_max;t++)
     mu_s.erase(remove_at(mu_s.begin(), mu_s.end(), Elements_to_erase.begin(), Elements_to_erase.end()), mu_s.end());
     r.erase(remove_at(r.begin(), r.end(), Elements_to_erase.begin(), Elements_to_erase.end()), r.end());
 //Теперь вычисляем интеграл
+cout<<"Here is new check for r--------------------------------------------------------------------------------------------------------------------"<<endl;
+    for(int i=0;i<a.size();i++)
+    {
+        if(r[i]>1||r[i]<0)
+        {
+            cout<<"Mistake here "<<r[i]<<" "<<E_0v<<" "<<E_1v<<" "<<E_2v<<" "<<E_0v-E_1v<<"/"<<E_2v-E_1v<<endl;
+        }
+    }
     for(int i=0;i<a.size();i++)
     {
         for(int j=0;j<3;j++)
