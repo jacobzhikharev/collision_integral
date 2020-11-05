@@ -9,12 +9,12 @@
 #include "workwVectors.h"
 using namespace std;
 #define _USE_MATH_DEFINES
-const int N=60;//Размер скоростной сетки
+const int N=20;//Размер скоростной сетки
 const double Bltzmn=1.380649*1.0e-23;
 const double mass=2.6*1.0e-26;
 const double Temp=300.0;
-const double stretch =2.77;//Для изменения максимальной скорости входящей в область
-const double E_cut=5;//Параметр для обрезания сферы
+const double stretch =2;//Для изменения максимальной скорости входящей в область
+const double E_cut=4.8;//Параметр для обрезания сферы
 //Метод для быстрого удаления элемента из матрицы
 template <class ForwardIt, class SortUniqIndsFwdIt>
 inline ForwardIt remove_at(
@@ -81,8 +81,6 @@ int main()
     vector<double> E_cm;//Энергия центра масс
     double minDist;
     double E_check;
-    
-    
     long double Dlm, Dlms,Dab;
     vector<vector<double> >lam;//Скорости после проецирования
     vector<vector<double> >lam_s;//Скорости после проецирования
@@ -103,10 +101,10 @@ int main()
     int Appr_dot;
     double N_to_fin;
     double konst_to_ln=0.0;//Для проверки аргумента логарифма
-    int p=2000003;//Размер сетки коробова
+    int p=100003;//Размер сетки коробова
     int K_b[8];
     int uy=0;
-    int b=832685;//Первый коэфициент сетки
+    int b=20285;//Первый коэфициент сетки
     int t_max=1;//Число шагов по времени
     cout<<"Enter max t-> ";
     cin>>t_max;
@@ -119,6 +117,8 @@ int main()
     vector<double> T_long;//Продольная температура
     vector<double> H;//Н-функции
     vector<double> T;//Температура
+    vector<double> Density;
+    Density.resize(t_max);
     H.resize(t_max);
     T.resize(t_max);
     double T_Zero=0.0;//Начальная температура(вычисляется по начальному значению сетки скоростей)
@@ -356,6 +356,7 @@ for(int t=0;t<t_max;t++)
     mu=Nlrg(mu,a.size(),3);
     mu_s=Nlrg(mu_s,a.size(),3);
     Elements_to_erase.clear();
+    r.resize(a.size());
     //Получили Новые массивы и набор точек в прве скоростей и нужного размера
     //Далее идет проекционный метод
     for(int i=0;i<a.size();i++)
@@ -533,20 +534,20 @@ for(int t=0;t<t_max;t++)
                     lam[i][k]=Eta_cube[Appr_dot][k];
                     mu[i][k]=2.0*E_cm[k]-lam[i][k];
                     E_0v=a[i][0]*a[i][0]+a[i][1]*a[i][1]+a[i][2]*a[i][2]+
-            a[i][3]*a[i][3]+a[i][4]*a[i][4]+a[i][5]*a[i][5];
-        E_1v=lam[i][0]*lam[i][0]+lam[i][1]*lam[i][1]+lam[i][2]*lam[i][2]+
-            mu[i][0]*mu[i][0]+mu[i][1]*mu[i][1]+mu[i][2]*mu[i][2];
-        E_2v=lam_s[i][0]*lam_s[i][0]+lam_s[i][1]*lam_s[i][1]+lam_s[i][2]*lam_s[i][2]+
-            mu_s[i][0]*mu_s[i][0]+mu_s[i][1]*mu_s[i][1]+mu_s[i][2]*mu_s[i][2];
-         r[i]=(E_0v-E_1v)/(E_2v-E_1v);
-         if(r[i]*r[i]<1.0e-10)
-         {
-             r[i]=0.0;
-         }
-         if((r[i]-1.0)*(r[i]-1.0)<1.0e-10)
-         {
-             r[i]=1.0;
-         }
+                    a[i][3]*a[i][3]+a[i][4]*a[i][4]+a[i][5]*a[i][5];
+                    E_1v=lam[i][0]*lam[i][0]+lam[i][1]*lam[i][1]+lam[i][2]*lam[i][2]+
+                    mu[i][0]*mu[i][0]+mu[i][1]*mu[i][1]+mu[i][2]*mu[i][2];
+                    E_2v=lam_s[i][0]*lam_s[i][0]+lam_s[i][1]*lam_s[i][1]+lam_s[i][2]*lam_s[i][2]+
+                    mu_s[i][0]*mu_s[i][0]+mu_s[i][1]*mu_s[i][1]+mu_s[i][2]*mu_s[i][2];
+                    r[i]=(E_0v-E_1v)/(E_2v-E_1v);
+            if(r[i]*r[i]<1.0e-10)
+            {
+                r[i]=0.0;
+            }
+            if((r[i]-1.0)*(r[i]-1.0)<1.0e-10)
+            {
+                r[i]=1.0;
+            }
          //cout<<r[i]<<" "<<E_0v<<" "<<E_1v<<" "<<E_2v<<endl;
                 }
             }
@@ -726,7 +727,7 @@ cout<<"Here is new check for r--------------------------------------------------
     {
         for(int j=0;j<N_y;j++)
         {
-            for(int k=1;k<N_z;k++)
+            for(int k=0;k<N_z;k++)
             {
                 konst_to_ln=(f[i][j][k]*f[i][j][k]);
                 if(konst_to_ln>0)
@@ -753,6 +754,7 @@ cout<<"Here is new check for r--------------------------------------------------
     }    
     int h=0;
     cout<<"n after"<<nc<<endl;
+    Density[t]=nc;
 }    
 //Конец цикла
 nc=0.0;
@@ -779,6 +781,13 @@ nc=0.0;
             }
         }
     }
+    out.close();
+    out.open("Density");
+    for(int i=0;i<t_max;i++)
+    {
+        out<<i<<" "<<Density[i]<<endl;
+    }
+    
     out.close();
     out.open("Templong");
     for(int i=0;i<t_max;i++)
