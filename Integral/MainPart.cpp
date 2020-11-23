@@ -14,7 +14,8 @@ const double Bltzmn=1.380649*1.0e-23;
 const double mass=2.6*1.0e-26;
 const double Temp=300.0;
 const double stretch =2;//Для изменения максимальной скорости входящей в область
-const double E_cut=4.8;//Параметр для обрезания сферы
+const double E_cut=5;//Параметр для обрезания сферы
+const int SPM_PIM=0;//SPM=0, PIM=1
 //Метод для быстрого удаления элемента из матрицы
 template <class ForwardIt, class SortUniqIndsFwdIt>
 inline ForwardIt remove_at(
@@ -111,7 +112,8 @@ int main()
     double Nu;//Число точек сетки скоротей, попадающих во вписанную сферу
     double tau=1.0/(sqrt(Bltzmn*Temp/mass)*M_PI*sqrt(2));//Шаг интегрирования по времени(длина свободного пробега на скорость)
     double rel[3];//Лишний массив для относительных скоростей
-    long double Delta;//Параметр для интегрирования
+    double rel_vel;
+    long double Delta[4];//Параметр для интегрирования
     double f[N_x][N_y][N_z];//Функции распределения
     VelNet.resize(N); 
     vector<double> T_long;//Продольная температура
@@ -179,6 +181,7 @@ int main()
     cout<<"C="<<C<<endl;
     cout<<"tau="<<tau<<endl;
     vector<double> r;//Индексы для интерполяции
+    vector<double> r_s;//Дополнительные Индексы для интерполяции
 //Печать в файл
     ofstream out;
     out.open("resultfv");
@@ -664,6 +667,7 @@ for(int t=0;t<t_max;t++)
     mu.erase(remove_at(mu.begin(), mu.end(), Elements_to_erase.begin(), Elements_to_erase.end()), mu.end());
     mu_s.erase(remove_at(mu_s.begin(), mu_s.end(), Elements_to_erase.begin(), Elements_to_erase.end()), mu_s.end());
     r.erase(remove_at(r.begin(), r.end(), Elements_to_erase.begin(), Elements_to_erase.end()), r.end());
+    r_s.resize(a.size());
 //Теперь вычисляем интеграл
 cout<<"Here is new check for r--------------------------------------------------------------------------------------------------------------------"<<endl;
     for(int i=0;i<a.size();i++)
@@ -673,42 +677,80 @@ cout<<"Here is new check for r--------------------------------------------------
             cout<<"Mistake here "<<r[i]<<" "<<E_0v<<" "<<E_1v<<" "<<E_2v<<" "<<E_0v-E_1v<<"/"<<E_2v-E_1v<<endl;
         }
     }
-    for(int i=0;i<a.size();i++)
+    if(SPM_PIM==0)
     {
-        for(int j=0;j<3;j++)
+        for(int i=0;i<a.size();i++)
         {
-            rel[j]=a[i][j]-a[i][j+3];//Находим относительную скорость
+            for(int j=0;j<3;j++)
+            {
+                rel[j]=a[i][j]-a[i][j+3];//Находим относительную скорость
+            }
+            rel_vel=sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch);
+            Delta[3]=f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]*f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])];
+            Delta[1]=f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])];
+            Delta[2]=f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])];
+            r_s[i]=(r[i]*Delta[2])/(r[i]*Delta[2]+(1-r[i])*Delta[3]);
+            if(f[I(a[i][0])][I(a[i][1])][I(a[i][2])]+C*rel_vel*a[i][6]*((1-r_s[i])*Delta[2]+r_s[i]*Delta[3]-Delta[1])<0||
+            f[I(a[i][3])][I(a[i][4])][I(a[i][5])]+C*rel_vel*a[i][6]*((1-r_s[i])*Delta[2]+r_s[i]*Delta[3]-Delta[1])<0||
+            f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]+C*a[i][6]*rel_vel*((1-r[i])*Delta[1]-(1-r_s[i])*Delta[2])<0||
+            f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]+C*a[i][6]*rel_vel*((1-r[i])*Delta[1]-(1-r_s[i])*Delta[2])<0||
+            f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]+C*a[i][6]*rel_vel*(r[i]*Delta[1]-r_s[i]*Delta[3])<0||
+            f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]+C*a[i][6]*rel_vel*(r[i]*Delta[1]-r_s[i]*Delta[3])<0)
+            {
+                continue;
+            }
+            else
+            {
+                f[I(a[i][0])][I(a[i][1])][I(a[i][2])]+=C*rel_vel*a[i][6]*((1-r_s[i])*Delta[2]+r_s[i]*Delta[3]-Delta[1]);
+                f[I(a[i][3])][I(a[i][4])][I(a[i][5])]+=C*rel_vel*a[i][6]*((1-r_s[i])*Delta[2]+r_s[i]*Delta[3]-Delta[1]);
+                f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]+=C*a[i][6]*rel_vel*((1-r[i])*Delta[1]-(1-r_s[i])*Delta[2]);
+                f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]+=C*a[i][6]*rel_vel*((1-r[i])*Delta[1]-(1-r_s[i])*Delta[2]);
+                f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]+=C*a[i][6]*rel_vel*(r[i]*Delta[1]-r_s[i]*Delta[3]);
+                f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]+=C*a[i][6]*rel_vel*(r[i]*Delta[1]-r_s[i]*Delta[3]);
+            }
+
         }
-        if((f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]>1.0e-15)&&(f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]
-        >1.0e-15))//Проверяем деление на ноль
+
+    }
+    else
+    {
+        for(int i=0;i<a.size();i++)
         {
-            Delta=(pow(f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]*f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]/(f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]),r[i])*f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-
-            f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])])*
-            sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch);
-        }
-        else 
-        {
-            Delta=-f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])]*
-            sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch);
-        }
-        //Проверяем неотрицательность
-        if(f[I(a[i][0])][I(a[i][1])][I(a[i][2])]+C*Delta<0||
-        f[I(a[i][3])][I(a[i][4])][I(a[i][5])]+C*Delta<0||
-        f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]-(1-r[i])*C*Delta<0||
-        f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-(1-r[i])*C*Delta<0||
-        f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]-r[i]*C*Delta<0||
-        f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]-r[i]*C*Delta<0)
-        {
-            continue;
-        }
-        else
-        {
-            f[I(a[i][0])][I(a[i][1])][I(a[i][2])]+=C*Delta;
-            f[I(a[i][3])][I(a[i][4])][I(a[i][5])]+=C*Delta;
-            f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]-=(1-r[i])*C*Delta;
-            f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-=(1-r[i])*C*Delta;
-            f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]-=r[i]*C*Delta;
-            f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]-=r[i]*C*Delta;
+            for(int j=0;j<3;j++)
+            {
+                rel[j]=a[i][j]-a[i][j+3];//Находим относительную скорость
+            }
+            if((f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]>1.0e-15)&&(f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]
+            >1.0e-15))//Проверяем деление на ноль
+            {
+                Delta[0]=(pow(f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]*f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]/(f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]),r[i])*f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]*f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-
+                f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])])*
+                sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch)*a[i][6];
+            }
+            else 
+            {
+                Delta[0]=-f[I(a[i][0])][I(a[i][1])][I(a[i][2])]*f[I(a[i][3])][I(a[i][4])][I(a[i][5])]*
+                sqrt(rel[0]*rel[0]+rel[1]*rel[1]+rel[2]*rel[2])*sqrt(3*Bltzmn*Temp/mass)/(E_cut/stretch)*a[i][6];
+            }
+            //Проверяем неотрицательность
+            if(f[I(a[i][0])][I(a[i][1])][I(a[i][2])]+C*Delta[0]<0||
+            f[I(a[i][3])][I(a[i][4])][I(a[i][5])]+C*Delta[0]<0||
+            f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]-(1-r[i])*C*Delta[0]<0||
+            f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-(1-r[i])*C*Delta[0]<0||
+            f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]-r[i]*C*Delta[0]<0||
+            f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]-r[i]*C*Delta[0]<0)
+            {
+                continue;
+            }
+            else
+            {
+                f[I(a[i][0])][I(a[i][1])][I(a[i][2])]+=C*Delta[0];
+                f[I(a[i][3])][I(a[i][4])][I(a[i][5])]+=C*Delta[0];
+                f[I(lam[i][0])][I(lam[i][1])][I(lam[i][2])]-=(1-r[i])*C*Delta[0];
+                f[I(mu[i][0])][I(mu[i][1])][I(mu[i][2])]-=(1-r[i])*C*Delta[0];
+                f[I(lam_s[i][0])][I(lam_s[i][1])][I(lam_s[i][2])]-=r[i]*C*Delta[0];
+                f[I(mu_s[i][0])][I(mu_s[i][1])][I(mu_s[i][2])]-=r[i]*C*Delta[0];
+            }
         }
     }
 
